@@ -123,13 +123,13 @@ function NewTicketForm() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/tickets">
-          <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
+          <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-white">Create New Ticket</h1>
-          <p className="text-slate-400 mt-1">
+          <h1 className="text-2xl font-bold">Create New Ticket</h1>
+          <p className="text-muted-foreground mt-1">
             Submit a ticket to the development team
           </p>
         </div>
@@ -137,10 +137,10 @@ function NewTicketForm() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Category Selection */}
-        <Card className="border-slate-700 bg-slate-800/50">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white text-lg">What type of ticket is this?</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-lg">What type of ticket is this?</CardTitle>
+            <CardDescription>
               Select the category that best describes your request
             </CardDescription>
           </CardHeader>
@@ -160,12 +160,12 @@ function NewTicketForm() {
                     className={`p-4 rounded-lg border text-left transition-all ${
                       isSelected
                         ? "border-orange-500 bg-orange-500/10"
-                        : "border-slate-700 bg-slate-700/30 hover:border-slate-600"
+                        : "border-border bg-muted/50 hover:bg-muted"
                     }`}
                   >
                     <Icon className={`h-5 w-5 mb-2 ${option.color}`} />
-                    <p className="text-sm font-medium text-white">{option.label}</p>
-                    <p className="text-xs text-slate-400 mt-1">{option.description}</p>
+                    <p className="text-sm font-medium">{option.label}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
                   </button>
                 )
               })}
@@ -177,23 +177,22 @@ function NewTicketForm() {
         </Card>
 
         {/* Ticket Details */}
-        <Card className="border-slate-700 bg-slate-800/50">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white text-lg">Ticket Details</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-lg">Ticket Details</CardTitle>
+            <CardDescription>
               Provide as much detail as possible
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Title */}
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-slate-300">
+              <Label htmlFor="title">
                 Title <span className="text-red-400">*</span>
               </Label>
               <Input
                 id="title"
                 placeholder="Brief summary of the issue or request"
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
                 {...register("title")}
               />
               {errors.title && (
@@ -203,22 +202,22 @@ function NewTicketForm() {
 
             {/* Priority */}
             <div className="space-y-2">
-              <Label htmlFor="priority" className="text-slate-300">
+              <Label htmlFor="priority">
                 Priority <span className="text-red-400">*</span>
               </Label>
               <Select
                 value={watch("priority")}
                 onValueChange={(value) => setValue("priority", value as TicketFormData["priority"])}
               >
-                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                <SelectTrigger>
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectContent>
                   {priorityOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <div className="flex flex-col">
                         <span>{option.label}</span>
-                        <span className="text-xs text-slate-400">{option.description}</span>
+                        <span className="text-xs text-muted-foreground">{option.description}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -231,14 +230,14 @@ function NewTicketForm() {
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-slate-300">
+              <Label htmlFor="description">
                 Description <span className="text-red-400">*</span>
               </Label>
               <Textarea
                 id="description"
                 placeholder="Provide a detailed description of the issue or request..."
                 rows={5}
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 resize-none"
+                className="resize-none"
                 {...register("description")}
               />
               {errors.description && (
@@ -249,17 +248,17 @@ function NewTicketForm() {
             {/* Steps to Reproduce (for bugs) */}
             {watchCategory === "BUG" && (
               <div className="space-y-2">
-                <Label htmlFor="stepsToReproduce" className="text-slate-300">
+                <Label htmlFor="stepsToReproduce">
                   Steps to Reproduce
                 </Label>
                 <Textarea
                   id="stepsToReproduce"
                   placeholder="1. Go to...&#10;2. Click on...&#10;3. See error..."
                   rows={4}
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 resize-none"
+                  className="resize-none"
                   {...register("stepsToReproduce")}
                 />
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   List the steps to reproduce the bug, one per line
                 </p>
               </div>
@@ -268,10 +267,10 @@ function NewTicketForm() {
         </Card>
 
         {/* Contact Information */}
-        <Card className="border-slate-700 bg-slate-800/50">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white text-lg">Contact Information</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-lg">Contact Information</CardTitle>
+            <CardDescription>
               How can we reach you about this ticket?
             </CardDescription>
           </CardHeader>
@@ -279,14 +278,13 @@ function NewTicketForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="contactEmail" className="text-slate-300">
+                <Label htmlFor="contactEmail">
                   Email <span className="text-red-400">*</span>
                 </Label>
                 <Input
                   id="contactEmail"
                   type="email"
                   placeholder="your.email@projectduo.com"
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
                   {...register("contactEmail")}
                 />
                 {errors.contactEmail && (
@@ -296,14 +294,13 @@ function NewTicketForm() {
 
               {/* Phone */}
               <div className="space-y-2">
-                <Label htmlFor="contactPhone" className="text-slate-300">
+                <Label htmlFor="contactPhone">
                   Phone (Optional)
                 </Label>
                 <Input
                   id="contactPhone"
                   type="tel"
                   placeholder="+63 XXX XXX XXXX"
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
                   {...register("contactPhone")}
                 />
               </div>
@@ -314,7 +311,7 @@ function NewTicketForm() {
         {/* Submit */}
         <div className="flex items-center justify-between">
           <Link href="/tickets">
-            <Button variant="ghost" className="text-slate-400 hover:text-white">
+            <Button variant="ghost">
               Cancel
             </Button>
           </Link>

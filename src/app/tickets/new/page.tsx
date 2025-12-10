@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { Loader2, ArrowLeft, Bug, Lightbulb, Wrench, HelpCircle, CheckCircle2, TicketIcon } from "lucide-react"
+import { Loader2, ArrowLeft, Bug, Lightbulb, Wrench, HelpCircle, CheckCircle2, TicketIcon, Upload, X, FileIcon } from "lucide-react"
 import Link from "next/link"
 
 const ticketSchema = z.object({
@@ -56,6 +56,8 @@ function NewTicketForm() {
   const { data: session } = useSession()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [, setSelectedCategory] = useState<string | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [uploadProgress, setUploadProgress] = useState<string>("")
 
   const {
     register,
@@ -89,10 +91,66 @@ function NewTicketForm() {
     }
   }, [session, setValue])
 
+  // Handle file selection
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files) return
+
+    const newFiles = Array.from(files)
+    const validFiles = newFiles.filter((file) => {
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File "${file.name}" exceeds 10MB limit`)
+        return false
+      }
+      return true
+    })
+
+    setSelectedFiles((prev) => [...prev, ...validFiles])
+  }
+
+  // Remove file from selection
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  // Upload attachments to a ticket
+  const uploadAttachments = async (ticketId: string) => {
+    if (selectedFiles.length === 0) return
+
+    setUploadProgress(`Uploading ${selectedFiles.length} file(s)...`)
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i]
+      setUploadProgress(`Uploading ${i + 1}/${selectedFiles.length}: ${file.name}`)
+
+      const formData = new FormData()
+      formData.append("file", file)
+
+      try {
+        const response = await fetch(`/api/tickets/${ticketId}/attachments`, {
+          method: "POST",
+          body: formData,
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${file.name}`)
+        }
+      } catch (error) {
+        toast.error(`Failed to upload ${file.name}`, {
+          description: error instanceof Error ? error.message : "Please try uploading manually",
+        })
+      }
+    }
+
+    setUploadProgress("")
+  }
+
   const onSubmit = async (data: TicketFormData) => {
     setIsSubmitting(true)
 
     try {
+      // Create the ticket
       const response = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -105,6 +163,12 @@ function NewTicketForm() {
       }
 
       const ticket = await response.json()
+
+      // Upload attachments if any
+      if (selectedFiles.length > 0) {
+        await uploadAttachments(ticket.id)
+      }
+
       toast.success("Ticket created successfully!", {
         description: `Ticket ${ticket.ticketNumber} has been submitted for approval.`,
       })
@@ -305,6 +369,81 @@ function NewTicketForm() {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Attachments */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Attachments</CardTitle>
+            <CardDescription>
+              Upload screenshots, documents, or other files (optional)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* File Upload Button */}
+            <div className="flex items-center gap-4">
+              <Input
+                id="file-upload"
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                accept="image/*,.pdf,.doc,.docx,.txt,.zip"
+              />
+              <Label
+                htmlFor="file-upload"
+                className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg cursor-pointer transition-colors border border-border"
+              >
+                <Upload className="h-4 w-4" />
+                <span className="text-sm font-medium">Choose Files</span>
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Max 10MB per file. Supported: images, PDF, DOC, TXT, ZIP
+              </p>
+            </div>
+
+            {/* Selected Files List */}
+            {selectedFiles.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Selected Files ({selectedFiles.length})</Label>
+                <div className="space-y-2">
+                  {selectedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <FileIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{file.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeFile(index)}
+                        className="flex-shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload Progress */}
+            {uploadProgress && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{uploadProgress}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 

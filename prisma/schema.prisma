@@ -1,0 +1,2302 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@index([provider])
+  @@index([expires_at])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+}
+
+model User {
+  id                               String                    @id @default(cuid())
+  name                             String?
+  email                            String                    @unique
+  emailVerified                    DateTime?
+  image                            String?
+  password                         String?
+  lastName                         String?
+  firstName                        String?
+  middleName                       String?
+  position                         String?
+  idNumber                         String?                   @unique
+  employmentDate                   DateTime?
+  office                           Office?
+  group                            Group?
+  department                       Department?
+  contactNumber                    String?
+  pdEmail                          String?                   @unique
+  personalEmail                    String?                   @unique
+  birthdate                        DateTime?
+  addressId                        String?
+  profileCompleted                 Boolean                   @default(false)
+  createdAt                        DateTime                  @default(now())
+  updatedAt                        DateTime                  @updatedAt
+  displayNamePreference            String?                   @default("full")
+  immediateSupervisor              String?
+  isDepartmentHead                 Boolean                   @default(false)
+  isOfficeHead                     Boolean                   @default(false)
+  isGroupDirector                  Boolean                   @default(false)
+  canViewAllBudgetCodesAndProjects Boolean                   @default(false)
+  preferredName                    String?
+  canManagePEP                     Boolean                   @default(false)
+  deletedAt                        DateTime?
+  ticketRole                       TicketRole                @default(NORMAL)
+  accounts                         Account[]
+  createdBulletins                 Bulletin[]
+  bulletinAcknowledgments          BulletinAcknowledgment[]
+  bulletinRecipients               BulletinRecipient[]
+  cashAdvanceForms                 CashAdvanceForm[]
+  sentMessages                     ChatMessage[]             @relation("MessageSender")
+  chatRoomMembers                  ChatRoomMember[]
+  flightBookings                   FlightBooking[]
+  genOpsPEPForms                   GenOpsPEPForm[]           @relation("GenOpsPEPFormCreator")
+  registeredIMs                    IM[]
+  imcfForms                        IMCFForm[]
+  jomsForms                        JOMSForm[]
+  messageReadStatus                MessageReadStatus[]
+  notifications                    Notification[]
+  opexBudgetCoreTeam               OpexBudgetCoreTeam[]
+  opexBudgetForms                  OpexBudgetForm[]
+  permissions                      Permission[]
+  managedProjects                  Project[]                 @relation("ProjectAccountManager")
+  projectManager                   Project[]                 @relation("ProjectManager")
+  rtpFieldChangeLogs               RTPFieldChangeLog[]
+  rtpForms                         RTPForm[]
+  reimbursementForms               ReimbursementForm[]
+  sessions                         Session[]
+  suppliesRequisitionForms         SuppliesRequisitionForm[]
+  createdCEs                       CE[]
+  supplyEditLogs                   SupplyEditLog[]
+  supplyRequisitions               SupplyRequisition[]
+  supplyStockMovements             SupplyStockMovement[]
+  todaysNews                       TodaysNews[]
+  todos                            Todo[]
+  address                          Address?                  @relation(fields: [addressId], references: [id])
+  supervisor                       User?                     @relation("UserSupervisor", fields: [immediateSupervisor], references: [id])
+  subordinates                     User[]                    @relation("UserSupervisor")
+  auditLogsAsActor                 UserAuditLog[]            @relation("UserAuditActor")
+  auditLogsAsTarget                UserAuditLog[]            @relation("UserAuditTarget")
+  vehicleBookings                  VehicleBooking[]
+  vehicleRequisitionForms          VehicleRequisitionForm[]
+  createdVendors                   Vendor[]                  @relation("VendorCreator")
+  reviewedVendors                  Vendor[]
+  createdAssignments               WorkflowAssignment[]      @relation("AssignedBy")
+  assignedWorkflows                WorkflowAssignment[]      @relation("AssignedTo")
+  createdWorkflows                 WorkflowDefinition[]
+
+  // Ticket relations (pdis-tickets)
+  submittedTickets    Ticket[]              @relation("TicketSubmitter")
+  processOwnerTickets Ticket[]              @relation("TicketProcessOwner")
+  developerTickets    Ticket[]              @relation("TicketDeveloper")
+  qaTickets           Ticket[]              @relation("TicketQA")
+  cancelledTickets    Ticket[]              @relation("TicketCancelledBy")
+  ticketAttachments   TicketAttachment[]
+  ticketComments      TicketComment[]
+  ticketStatusChanges TicketStatusHistory[]
+
+  @@index([office])
+  @@index([group])
+  @@index([department])
+  @@index([profileCompleted])
+  @@index([createdAt])
+  @@index([office, department])
+  @@index([immediateSupervisor])
+  @@index([isGroupDirector])
+  @@index([isDepartmentHead])
+  @@index([isOfficeHead])
+  @@index([group, isGroupDirector])
+  @@index([department, isDepartmentHead])
+  @@index([canViewAllBudgetCodesAndProjects])
+  @@index([deletedAt])
+  @@index([ticketRole])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model GlobalLogoutEvent {
+  id          String   @id @default(cuid())
+  triggeredAt DateTime @default(now())
+  reason      String
+  createdAt   DateTime @default(now())
+
+  @@index([triggeredAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  otp       String
+  expires   DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@index([expires])
+}
+
+model Address {
+  id               String   @id @default(cuid())
+  houseNo          String
+  street           String
+  subdivision      String?
+  region           String
+  province         String?
+  cityMunicipality String
+  barangay         String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  ims              IM[]
+  users            User[]
+
+  @@index([region, cityMunicipality])
+  @@index([cityMunicipality, barangay])
+}
+
+model Permission {
+  id               String           @id @default(cuid())
+  userId           String
+  module           String
+  modulePermission ModulePermission
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, module])
+  @@index([module])
+  @@index([modulePermission])
+}
+
+model IM {
+  id                 String          @id @default(cuid())
+  imNumber           String          @unique
+  lastName           String
+  firstName          String
+  middleName         String
+  birthday           DateTime
+  contactNo          String
+  email              String
+  houseNo            String?
+  street             String?
+  subdivision        String?
+  region             String?
+  province           String?
+  cityMunicipality   String?
+  barangay           String?
+  addressId          String?
+  ownGcash           String?
+  authorizedGcash    String?
+  authorizedReceiver String?
+  fbLink             String?
+  imFilesLink        String?
+  status             IMStatus?       @default(ACTIVE)
+  registeredBy       String?
+  createdAt          DateTime?       @default(now())
+  updatedAt          DateTime?       @updatedAt
+  address            Address?        @relation(fields: [addressId], references: [id])
+  registeredByUser   User?           @relation(fields: [registeredBy], references: [id])
+  imcfPersonnel      IMCFPersonnel[]
+
+  @@index([status])
+  @@index([registeredBy])
+  @@index([createdAt])
+  @@index([addressId])
+  @@index([status, createdAt])
+}
+
+model Project {
+  id                       String                    @id @default(cuid())
+  projectName              String
+  type                     ProjectType?
+  projectDate              DateTime?
+  projectVenue             String?
+  accountManager           String?
+  projectManager           String?
+  artist                   String?
+  writer                   String?
+  others                   String?
+  companyName              String?
+  proponent                String?
+  brand                    String?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  internalBudgetCurrent    Decimal?
+  internalBudgetInitial    Decimal?
+  referenceNumber          String?                   @unique
+  coreTeamMembers          Json                      @default("[]")
+  internalBudgetProposed   Decimal?
+  status                   ProjectStatus             @default(DRAFT)
+  ces                      CE[]
+  cashAdvanceForms         CashAdvanceForm[]
+  customTabs               CustomTab[]
+  flightBookings           FlightBooking[]
+  genOpsPEPForms           GenOpsPEPForm[]
+  imcfForms                IMCFForm[]
+  accountManagerUser       User?                     @relation("ProjectAccountManager", fields: [accountManager], references: [id])
+  projectManagerUser       User?                     @relation("ProjectManager", fields: [projectManager], references: [id])
+  rtpProjectAllocations    RTPProjectAllocation[]
+  reimbursementForms       ReimbursementForm[]
+  suppliesRequisitionForms SuppliesRequisitionForm[]
+  vehicleRequisitionForms  VehicleRequisitionForm[]
+
+  @@index([createdAt])
+  @@index([accountManager])
+  @@index([projectManager])
+  @@index([type])
+  @@index([status])
+  @@index([type, createdAt])
+  @@index([status, createdAt])
+}
+
+model CE {
+  id                String    @id @default(cuid())
+  ceID              String    @unique
+  projectID         String
+  cepdNumber        String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  fileUrl           String?
+  fileName          String?
+  cloudinaryId      String?
+  approvedBudget    Decimal?  @db.Decimal(18, 2)
+  currency          String?   @default("PHP")
+  ceType            String?
+  externalSubtotal  Decimal?  @default(0) @db.Decimal(18, 2)
+  grandTotal        Decimal?  @default(0) @db.Decimal(18, 2)
+  internalSubtotal  Decimal?  @default(0) @db.Decimal(18, 2)
+  isEncoded         Boolean   @default(false)
+  serviceFeeAmount  Decimal?  @default(0) @db.Decimal(18, 2)
+  serviceFeePercent Decimal?  @default(10) @db.Decimal(5, 2)
+  vatAmount         Decimal?  @default(0) @db.Decimal(18, 2)
+  vatPercent        Decimal?  @default(12) @db.Decimal(5, 2)
+  ceOrder           Int       @default(0)
+  workflowId        String?
+  currentStage      Int?      @default(1)
+  status            CEStatus  @default(DRAFT)
+  referenceNumber   String?   @unique
+  createdBy         String?
+  submittedAt       DateTime?
+  dateNeeded        DateTime?
+
+  // Cost Summary Fields (External)
+  inHouseResourcesTotal    Decimal? @default(0) @db.Decimal(18, 2)
+  outsourcedResourcesTotal Decimal? @default(0) @db.Decimal(18, 2)
+
+  // P&L Summary Fields (Internal)
+  internalBudgetTotal Decimal? @default(0) @db.Decimal(18, 2)
+  initialSavings      Decimal? @default(0) @db.Decimal(18, 2)
+  incentiveAmount     Decimal? @default(0) @db.Decimal(18, 2)
+  totalSavings        Decimal? @default(0) @db.Decimal(18, 2)
+  overallPnlPercent   Decimal? @default(0) @db.Decimal(5, 2)
+
+  // Budget Plotting Data
+  budgetPlottingData Json? @default("{\"budgetItems\": [], \"lastUpdated\": null}")
+
+  project                  Project                   @relation(fields: [projectID], references: [id], onDelete: Cascade)
+  workflow                 WorkflowDefinition?       @relation(fields: [workflowId], references: [id])
+  creator                  User?                     @relation(fields: [createdBy], references: [id])
+  lineItems                CELineItem[]
+  imcfForms                IMCFForm[]
+  suppliesRequisitionForms SuppliesRequisitionForm[]
+
+  @@index([projectID])
+  @@index([cepdNumber])
+  @@index([isEncoded])
+  @@index([ceType])
+  @@index([projectID, ceOrder])
+  @@index([workflowId])
+  @@index([currentStage])
+  @@index([status])
+  @@index([createdBy])
+  @@index([status, currentStage])
+}
+
+model CELineItem {
+  id              String   @id @default(cuid())
+  ceId            String
+  parentId        String?
+  itemLevel       Int      @default(0)
+  itemOrder       Int      @default(0)
+  isHeader        Boolean  @default(false)
+  itemParticulars String? // Short name/identifier for the item
+  itemDescription String
+  category        String?
+  quantity        Decimal? @default(1) @db.Decimal(18, 4)
+  unit            String?  @default("unit")
+  unitPrice       Decimal? @default(0) @db.Decimal(18, 2)
+  days            Decimal? @default(1) @db.Decimal(18, 2)
+  venues          Decimal? @default(1) @db.Decimal(18, 2)
+  totalAmount     Decimal? @default(0) @db.Decimal(18, 2)
+
+  // Internal Cost Fields
+  internalUnitPrice  Decimal? @default(0) @db.Decimal(18, 2)
+  internalActualCost Decimal? @default(0) @db.Decimal(18, 2)
+  savings            Decimal? @default(0) @db.Decimal(18, 2)
+  pnlPercent         Decimal? @default(0) @db.Decimal(5, 2)
+  remarksPerItem     String?
+
+  // MJRB Template Fields
+  isOutsourcedSection Boolean @default(false) // True for OUTSOURCED RESOURCES header and its children (MJRB only)
+  isInHouseSection    Boolean @default(false) // True for IN-HOUSE RESOURCES header and its children (MJRB only)
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  ce        CE           @relation(fields: [ceId], references: [id], onDelete: Cascade)
+  parent    CELineItem?  @relation("CELineItemHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  CELineItem[] @relation("CELineItemHierarchy")
+
+  @@index([ceId])
+  @@index([parentId])
+  @@index([itemOrder])
+  @@index([category])
+  @@index([isHeader])
+  @@index([isOutsourcedSection])
+  @@index([isInHouseSection])
+}
+
+model CustomTab {
+  id        String   @id @default(cuid())
+  projectId String
+  tabName   String
+  tabOrder  Int      @default(0)
+  data      Json     @default("[]")
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, tabOrder])
+  @@index([createdBy])
+}
+
+model IMCFForm {
+  id                 String              @id @default(cuid())
+  referenceNumber    String              @unique
+  projectID          String?
+  ceID               String?
+  clearanceRequestor String
+  department         String
+  group              String?
+  dateOfRequest      DateTime            @default(now())
+  targetReleaseDate  DateTime?
+  coverageFromDate   DateTime?
+  coverageToDate     DateTime?
+  requestorRemarks   String?
+  status             IMCFStatus          @default(DRAFT)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  currentStage       Int?                @default(1)
+  workflowId         String?
+  budgetCode         String?
+  accountsManager    String?
+  projectManager     String?
+  requestType        String?             @default("OFFICE_USE")
+  ce                 CE?                 @relation(fields: [ceID], references: [id])
+  requestor          User                @relation(fields: [clearanceRequestor], references: [id])
+  project            Project?            @relation(fields: [projectID], references: [id])
+  workflow           WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+  personnel          IMCFPersonnel[]
+
+  @@index([projectID])
+  @@index([ceID])
+  @@index([clearanceRequestor])
+  @@index([status])
+  @@index([dateOfRequest])
+  @@index([currentStage])
+  @@index([workflowId])
+  @@index([requestType])
+  @@index([status, dateOfRequest])
+  @@index([status, currentStage])
+}
+
+model IMCFPersonnel {
+  id               String   @id @default(cuid())
+  imcfFormID       String
+  registeredName   String?
+  position         String
+  outletVenue      String
+  packagedFee      Decimal  @default(0)
+  mondayFee        Decimal  @default(0)
+  tuesdayFee       Decimal  @default(0)
+  wednesdayFee     Decimal  @default(0)
+  thursdayFee      Decimal  @default(0)
+  fridayFee        Decimal  @default(0)
+  saturdayFee      Decimal  @default(0)
+  sundayFee        Decimal  @default(0)
+  ownGcash         String?
+  authGcash        String?
+  authGcashAccName String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  remarks          String?
+  imID             String?
+  im               IM?      @relation(fields: [imID], references: [id], onDelete: Restrict)
+  imcfForm         IMCFForm @relation(fields: [imcfFormID], references: [id], onDelete: Cascade)
+
+  @@index([imcfFormID])
+  @@index([imID])
+  @@index([registeredName])
+}
+
+model OpexBudgetForm {
+  id               String              @id @default(cuid())
+  referenceNumber  String              @unique
+  department       String?
+  requestedBy      String?
+  requestDate      DateTime?
+  targetDate       DateTime?
+  requestorRemarks String?
+  status           OpexBudgetStatus    @default(DRAFT)
+  createdBy        String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  currentStage     Int?                @default(1)
+  workflowId       String?
+  creator          User                @relation(fields: [createdBy], references: [id])
+  workflow         WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+  budgetLines      OpexBudgetLine[]
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([workflowId])
+}
+
+model OpexBudgetLine {
+  id             String               @id @default(cuid())
+  formId         String
+  costCenter     String
+  budgetCode     String
+  description    String
+  components     String
+  finalBudget    Decimal              @default(0)
+  remarks        String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  proposedBudget Decimal              @default(0)
+  currentBudget  Decimal              @default(0)
+  initialBudget  Decimal              @default(0)
+  coreTeam       OpexBudgetCoreTeam[]
+  form           OpexBudgetForm       @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+  @@index([budgetCode])
+}
+
+model OpexBudgetCoreTeam {
+  id           String         @id @default(cuid())
+  budgetLineId String
+  userId       String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  budgetLine   OpexBudgetLine @relation(fields: [budgetLineId], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([budgetLineId, userId])
+  @@index([budgetLineId])
+  @@index([userId])
+}
+
+model UserAuditLog {
+  id           String      @id @default(cuid())
+  userId       String
+  actionBy     String
+  action       AuditAction
+  tableName    String
+  recordId     String
+  fieldName    String?
+  oldValue     String?
+  newValue     String?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime    @default(now())
+  actionByUser User        @relation("UserAuditActor", fields: [actionBy], references: [id])
+  user         User        @relation("UserAuditTarget", fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([actionBy])
+  @@index([createdAt])
+  @@index([action])
+  @@index([userId, createdAt])
+}
+
+model Module {
+  id          String               @id
+  name        String
+  description String?
+  category    String
+  isActive    Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  workflows   WorkflowDefinition[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model WorkflowDefinition {
+  id                       String                    @id @default(cuid())
+  name                     String
+  isActive                 Boolean                   @default(true)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  createdBy                String
+  moduleId                 String
+  bulletins                Bulletin[]
+  cashAdvanceForms         CashAdvanceForm[]
+  flightBookings           FlightBooking[]
+  genOpsPEPForms           GenOpsPEPForm[]
+  imcfForms                IMCFForm[]
+  jomsForms                JOMSForm[]
+  opexBudgetForms          OpexBudgetForm[]
+  rtpForms                 RTPForm[]
+  reimbursementForms       ReimbursementForm[]
+  suppliesRequisitionForms SuppliesRequisitionForm[]
+  supplyRequisitions       SupplyRequisition[]
+  todaysNews               TodaysNews[]
+  vehicleRequisitionForms  VehicleRequisitionForm[]
+  vendors                  Vendor[]
+  ces                      CE[]
+  creator                  User                      @relation(fields: [createdBy], references: [id])
+  module                   Module                    @relation(fields: [moduleId], references: [id])
+  stages                   WorkflowStage[]
+
+  @@index([moduleId])
+  @@index([isActive])
+  @@index([createdBy])
+}
+
+model WorkflowStage {
+  id            String             @id @default(cuid())
+  workflowId    String
+  stageNumber   Int
+  stageName     String
+  approverType  String
+  approverValue String
+  description   String?
+  isActive      Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  approvalMode  String?            @default("ANY")
+  workflow      WorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, stageNumber])
+  @@index([workflowId])
+  @@index([stageNumber])
+  @@index([approverType])
+}
+
+model WorkflowLog {
+  id            String    @id @default(cuid())
+  formId        String
+  formType      String
+  workflowId    String
+  stageNumber   Int
+  stageName     String
+  approverEmail String?
+  approverName  String?
+  action        String
+  remarks       String?
+  actionDate    DateTime?
+  createdAt     DateTime  @default(now())
+  assignedTo    String?
+  assignedBy    String?
+  actionBy      String?
+  returnToStage Int?
+
+  @@index([formId])
+  @@index([formType])
+  @@index([workflowId])
+  @@index([stageNumber])
+  @@index([approverEmail])
+  @@index([action])
+  @@index([actionDate])
+  @@index([assignedTo])
+  @@index([assignedBy])
+  @@index([actionBy])
+  @@index([returnToStage])
+}
+
+model WorkflowAssignment {
+  id             String    @id @default(cuid())
+  formId         String
+  formType       String
+  workflowId     String
+  stageNumber    Int
+  assignedTo     String
+  assignedBy     String
+  assignedAt     DateTime  @default(now())
+  expiresAt      DateTime?
+  isActive       Boolean   @default(true)
+  assignedByUser User      @relation("AssignedBy", fields: [assignedBy], references: [id])
+  assignedToUser User      @relation("AssignedTo", fields: [assignedTo], references: [id])
+
+  @@unique([formId, formType, stageNumber])
+  @@index([formId])
+  @@index([formType])
+  @@index([workflowId])
+  @@index([assignedTo])
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+model Bulletin {
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()"))
+  title                  String
+  content                String
+  type                   BulletinType             @default(BULLETIN)
+  priority               BulletinPriority         @default(MEDIUM)
+  pdfUrl                 String?
+  pdfFilename            String?
+  createdBy              String
+  publishedAt            DateTime?
+  expiresAt              DateTime?
+  isActive               Boolean                  @default(true)
+  requiresAcknowledgment Boolean                  @default(false)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @default(now()) @updatedAt
+  cloudinaryId           String?
+  workflowId             String?
+  currentStage           Int?                     @default(1)
+  status                 BulletinStatus           @default(DRAFT)
+  referenceNumber        String?                  @unique
+  blobId                 String?
+  creator                User                     @relation(fields: [createdBy], references: [id])
+  workflow               WorkflowDefinition?      @relation(fields: [workflowId], references: [id])
+  acknowledgments        BulletinAcknowledgment[]
+  recipients             BulletinRecipient[]
+
+  @@index([createdBy])
+  @@index([type])
+  @@index([priority])
+  @@index([publishedAt])
+  @@index([isActive])
+  @@index([requiresAcknowledgment])
+  @@index([type, isActive])
+  @@index([publishedAt, isActive])
+  @@index([cloudinaryId])
+  @@index([workflowId])
+  @@index([currentStage])
+  @@index([status])
+  @@index([status, currentStage])
+  @@index([referenceNumber])
+}
+
+model BulletinAcknowledgment {
+  id             String   @id @default(dbgenerated("gen_random_uuid()"))
+  bulletinId     String
+  userId         String
+  acknowledgedAt DateTime @default(now())
+  isCleared      Boolean  @default(false)
+  bulletin       Bulletin @relation(fields: [bulletinId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bulletinId, userId])
+  @@index([bulletinId])
+  @@index([userId])
+  @@index([acknowledgedAt])
+  @@index([isCleared])
+}
+
+model BulletinRecipient {
+  id         String      @id @default(dbgenerated("gen_random_uuid()"))
+  bulletinId String
+  office     Office?
+  department Department?
+  groupName  Group?
+  targetAll  Boolean     @default(false)
+  position   String?
+  userId     String?
+  bulletin   Bulletin    @relation(fields: [bulletinId], references: [id], onDelete: Cascade)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([bulletinId])
+  @@index([office])
+  @@index([department])
+  @@index([groupName])
+  @@index([targetAll])
+  @@index([userId])
+  @@index([position])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  actionUrl String?
+  metadata  Json?
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+model ChatRoom {
+  id        String           @id @default(cuid())
+  name      String?
+  type      String           @default("DIRECT")
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  messages  ChatMessage[]
+  members   ChatRoomMember[]
+
+  @@index([type])
+  @@index([createdAt])
+}
+
+model ChatRoomMember {
+  id         String   @id @default(cuid())
+  roomId     String
+  userId     String
+  joinedAt   DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  room       ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id          String              @id @default(cuid())
+  roomId      String
+  senderId    String
+  content     String
+  messageType String              @default("TEXT")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  room        ChatRoom            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender      User                @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  readStatus  MessageReadStatus[]
+
+  @@index([roomId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@index([roomId, createdAt])
+}
+
+model MessageReadStatus {
+  id        String      @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime    @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model FormRemarks {
+  id        String   @id @default(cuid())
+  formType  String
+  formId    String
+  stageId   Int
+  stageName String
+  remarks   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([formType, formId, stageId])
+  @@index([formType, formId])
+  @@index([formType, stageId])
+}
+
+model Todo {
+  id        String   @id @default(cuid())
+  text      String
+  completed Boolean  @default(false)
+  order     Int
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, order])
+  @@index([userId, completed])
+}
+
+model Vendor {
+  id                                       String              @id @default(cuid())
+  timestamp                                DateTime?
+  emailAddress                             String?
+  ContactPerson                            String?
+  businessRegistration                     String?
+  businessRegistration2                    String?
+  businessType                             String              @default("REGISTERED")
+  registeredVendorName                     String?
+  registeredTradeName                      String?
+  registeredUnitFloorBldgStreetNo          String?
+  registeredBarangay                       String?
+  registeredCityMunicipality               String?
+  registeredProvince                       String?
+  regsiteredZipCode                        String?
+  registeredBusinessCategory               String?
+  registeredTinNumber                      String?
+  regsiteredVatRegistrationType            String?
+  registeredBankName                       String?
+  registeredBankBranch                     String?
+  registeredBankAccountName                String?
+  registeredBankAccountNumber              String?
+  registeredBankAccountCheckCapable        Boolean             @default(false)
+  registeredFullName                       String?
+  registeredPositionDesignation            String?
+  registeredContactNumber                  String?
+  registeredBusinessEmail                  String?
+  registeredBir2303certificateRegistration String?
+  registeredProofOfId                      String?
+  registeredSampleSalesInvoice             String?
+  unregisteredRegisteredVendorName         String?
+  unregisteredVendorAddress                String?
+  unregisteredContactNumber                String?
+  unregisteredTinNumber                    String?
+  unregisteredBusinessCategory             String?
+  unregisteredEmailAddress                 String?
+  unregisteredBankName                     String?
+  unregisteredBankBranch                   String?
+  unregisteredBankAccountName              String?
+  unregisteredBankAccountNumber            String?
+  unregisteredBankAccountCheckCapable      Boolean             @default(false)
+  unregisteredProofOfIdentification        String?
+  unregisteredBirTin                       String?
+  status                                   VendorStatus        @default(NEW_RESPONSE)
+  reviewNotes                              String?
+  reviewedBy                               String?
+  reviewedAt                               DateTime?
+  createdAt                                DateTime            @default(now())
+  updatedAt                                DateTime            @updatedAt
+  syncedFromSheet                          DateTime?
+  sheetRowId                               String?
+  contactPerson1FirstName                  String?
+  contactPerson1MI                         String?
+  contactPerson1Position                   String?
+  mobileNumber1                            String?
+  emailAddress1                            String?
+  ewt1CompleteDescription                  String?
+  ewtCode1                                 String?
+  ewtDescription1                          String?
+  ewtPercentage1                           String?
+  bankBranch2                              String?
+  accountName2                             String?
+  accountNumber2                           String?
+  typeOfBusiness                           String?
+  lineOfBusiness                           String?
+  businessDescription                      String?
+  contactPerson1LastName                   String?
+  vatType                                  String?
+  proofOfLiquidation                       String?
+  bankName2                                String?
+  otherDocs                                String?
+  referenceNumber                          String?             @unique
+  workflowId                               String?
+  currentStage                             Int?                @default(1)
+  createdBy                                String?
+  dtiCertificate                           Boolean             @default(false)
+  secCertificate                           Boolean             @default(false)
+  businessPermit                           Boolean             @default(false)
+  bir2303                                  Boolean             @default(false)
+  govtIssuedId1                            Boolean             @default(false)
+  govtIssuedId2                            Boolean             @default(false)
+  auditedFs                                Boolean             @default(false)
+  brgyClearance                            Boolean             @default(false)
+  googleDriveLink                          String?
+  creator                                  User?               @relation("VendorCreator", fields: [createdBy], references: [id])
+  reviewer                                 User?               @relation(fields: [reviewedBy], references: [id])
+  workflow                                 WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+  banks                                    VendorBank[]
+  ewts                                     VendorEWT[]
+
+  @@index([status])
+  @@index([businessType])
+  @@index([timestamp])
+  @@index([createdAt])
+  @@index([sheetRowId])
+  @@index([typeOfBusiness])
+  @@index([lineOfBusiness])
+  @@index([vatType])
+  @@index([contactPerson1LastName])
+  @@index([contactPerson1FirstName])
+  @@index([referenceNumber])
+  @@index([workflowId])
+  @@index([currentStage])
+  @@index([createdBy])
+  @@index([status, currentStage])
+}
+
+model VendorBank {
+  id            String   @id @default(cuid())
+  vendorId      String
+  bankName      String
+  bankBranch    String?
+  accountName   String
+  accountNumber String
+  checkCapable  Boolean  @default(false)
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([isPrimary])
+  @@index([vendorId, isPrimary])
+}
+
+model VendorEWT {
+  id             String   @id @default(cuid())
+  vendorId       String
+  ewtCode        String
+  ewtDescription String
+  ewtPercentage  String
+  isPrimary      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  vendor         Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([isPrimary])
+  @@index([vendorId, isPrimary])
+}
+
+model Client {
+  id                   String            @id @default(cuid())
+  customerCode         String            @unique
+  customerName         String
+  tin                  String?
+  telephone            String?
+  fax                  String?
+  cellphone            String?
+  email                String?
+  vatLiable            Boolean           @default(false)
+  vatCode              String?
+  deferredTax          String?
+  withholdingTaxLiable Boolean           @default(false)
+  withholdingTaxCode   String?
+  arAccount            String?
+  dpAccount            String?
+  creditLimit          Decimal           @default(0)
+  currency             String            @default("PHP")
+  billingAddress       String?
+  shippingAddress      String?
+  status               ClientStatus      @default(DRAFT)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  googleDriveLink      String?
+  proponents           ClientProponent[]
+  genOpsPEPForms       GenOpsPEPForm[]
+
+  @@index([customerCode])
+  @@index([customerName])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ClientProponent {
+  id               String    @id @default(cuid())
+  clientId         String
+  contactPerson    String
+  position         String?
+  department       String?
+  telephone        String?
+  cellphone        String?
+  email            String?
+  birthday         DateTime?
+  houseNo          String?
+  street           String?
+  subdivision      String?
+  region           String?
+  province         String?
+  cityMunicipality String?
+  barangay         String?
+  isPrimary        Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([contactPerson])
+  @@index([isPrimary])
+}
+
+model SupplyItem {
+  id               String                  @id @default(cuid())
+  sku              String                  @unique
+  itemName         String
+  otherDescription String?
+  size             String?
+  color            String?
+  brand            String?
+  type             String?
+  category         SupplyCategory
+  unitPrice        Decimal                 @default(0)
+  currentStock     Int                     @default(0)
+  minimumStock     Int                     @default(0)
+  maximumStock     Int?
+  status           SupplyItemStatus        @default(ACTIVE)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  imageUrl         String?
+  unit             String
+  editLogs         SupplyEditLog[]
+  requisitionLines SupplyRequisitionLine[]
+  stockMovements   SupplyStockMovement[]
+
+  @@index([category])
+  @@index([status])
+  @@index([currentStock])
+  @@index([itemName])
+  @@index([sku])
+  @@index([brand])
+  @@index([unit])
+}
+
+model SupplyRequisition {
+  id               String                  @id @default(cuid())
+  referenceNumber  String                  @unique
+  requestedBy      String
+  department       String?
+  requestDate      DateTime                @default(now())
+  targetDate       DateTime?
+  requestorRemarks String?
+  reviewerRemarks  String?
+  approverRemarks  String?
+  status           SupplyRequisitionStatus @default(DRAFT)
+  currentStage     Int?                    @default(1)
+  workflowId       String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  requestor        User                    @relation(fields: [requestedBy], references: [id])
+  workflow         WorkflowDefinition?     @relation(fields: [workflowId], references: [id])
+  requisitionLines SupplyRequisitionLine[]
+
+  @@index([requestedBy])
+  @@index([status])
+  @@index([requestDate])
+  @@index([currentStage])
+  @@index([workflowId])
+  @@index([status, requestDate])
+}
+
+model SupplyRequisitionLine {
+  id            String            @id @default(cuid())
+  requisitionId String
+  supplyItemId  String
+  requestedQty  Int
+  approvedQty   Int?
+  unitPrice     Decimal           @default(0)
+  totalPrice    Decimal           @default(0)
+  remarks       String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  requisition   SupplyRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  supplyItem    SupplyItem        @relation(fields: [supplyItemId], references: [id])
+
+  @@index([requisitionId])
+  @@index([supplyItemId])
+}
+
+model SupplyStockMovement {
+  id            String             @id @default(cuid())
+  supplyItemId  String
+  movementType  SupplyMovementType
+  quantity      Int
+  unitPrice     Decimal?
+  totalValue    Decimal?
+  reason        String?
+  referenceId   String?
+  referenceType String?
+  performedBy   String
+  createdAt     DateTime           @default(now())
+  user          User               @relation(fields: [performedBy], references: [id])
+  supplyItem    SupplyItem         @relation(fields: [supplyItemId], references: [id])
+
+  @@index([supplyItemId])
+  @@index([movementType])
+  @@index([createdAt])
+  @@index([performedBy])
+  @@index([referenceId])
+}
+
+model SupplyEditLog {
+  id               String     @id @default(cuid())
+  supplyItemId     String
+  editedBy         String
+  fieldName        String
+  oldValue         String?
+  newValue         String?
+  quantityChange   Int?
+  adjustmentReason String?
+  createdAt        DateTime   @default(now())
+  user             User       @relation(fields: [editedBy], references: [id])
+  supplyItem       SupplyItem @relation(fields: [supplyItemId], references: [id])
+
+  @@index([supplyItemId])
+  @@index([editedBy])
+  @@index([createdAt])
+  @@index([fieldName])
+}
+
+model SuppliesRequisitionForm {
+  id                        String                             @id @default(cuid())
+  referenceNumber           String                             @unique
+  requestorName             String
+  department                String?
+  contactNumber             String?
+  dateOfRequest             DateTime                           @default(now())
+  projectId                 String?
+  ceId                      String?
+  dateNeeded                DateTime?
+  totalAmount               Decimal                            @default(0)
+  status                    SuppliesRequisitionFormStatus      @default(DRAFT)
+  currentStage              Int?                               @default(1)
+  workflowId                String?
+  createdBy                 String
+  createdAt                 DateTime                           @default(now())
+  updatedAt                 DateTime                           @updatedAt
+  requestorRemarks          String?
+  isSpecialWorkflow         Boolean?                           @default(true)
+  assignedToStage2          String?
+  assignedToStage3          String?
+  assignedToStage4          String?
+  budgetCode                String?
+  accountsManager           String?
+  projectManager            String?
+  requestType               String?                            @default("OFFICE_USE")
+  processorUserId           String?
+  authorizedRepresentatives SuppliesRequisitionAuthorizedRep[]
+  ce                        CE?                                @relation(fields: [ceId], references: [id])
+  creator                   User                               @relation(fields: [createdBy], references: [id])
+  project                   Project?                           @relation(fields: [projectId], references: [id])
+  workflow                  WorkflowDefinition?                @relation(fields: [workflowId], references: [id])
+  items                     SuppliesRequisitionItem[]
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([dateOfRequest])
+  @@index([currentStage])
+  @@index([workflowId])
+  @@index([projectId])
+  @@index([ceId])
+  @@index([requestType])
+  @@index([assignedToStage2])
+  @@index([assignedToStage3])
+  @@index([assignedToStage4])
+  @@index([status, dateOfRequest])
+}
+
+model JOMSForm {
+  id                     String              @id @default(cuid())
+  referenceNumber        String              @unique
+  requestor              String
+  dateOfRequest          DateTime            @default(now())
+  natureOfTrip           String
+  locationDestination    String
+  otherSupportingDetails String
+  pickupDeliveryContact  String
+  timeRangeStart         String
+  timeRangeEnd           String
+  requestorRemarks       String?
+  status                 JOMSStatus          @default(DRAFT)
+  currentStage           Int?                @default(1)
+  workflowId             String?
+  createdBy              String
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  assignedToStage2       String?
+  assignedToStage3       String?
+  assignedToStage4       String?
+  isSpecialWorkflow      Boolean?            @default(true)
+  processorUserId        String?
+  creator                User                @relation(fields: [createdBy], references: [id])
+  workflow               WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([currentStage])
+  @@index([workflowId])
+  @@index([assignedToStage2])
+  @@index([assignedToStage3])
+  @@index([assignedToStage4])
+  @@index([createdAt])
+}
+
+model SuppliesRequisitionItem {
+  id         String                  @id @default(cuid())
+  formId     String
+  sku        String
+  itemName   String
+  quantity   Int
+  unitPrice  Decimal                 @default(0)
+  totalPrice Decimal                 @default(0)
+  unit       String                  @default("pcs")
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
+  form       SuppliesRequisitionForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+  @@index([sku])
+}
+
+model SuppliesRequisitionAuthorizedRep {
+  id            String                  @id @default(cuid())
+  formId        String
+  name          String
+  contactNumber String
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  form          SuppliesRequisitionForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+}
+
+model FlightBooking {
+  id                     String              @id @default(cuid())
+  referenceNumber        String              @unique
+  projectId              String?
+  projectName            String
+  projectType            String
+  ceNumber               String?
+  numberOfPassengers     String
+  insurance              Boolean             @default(false)
+  dateOfDeparture        String
+  pointOfOrigin          String
+  destination            String
+  preferredTime          String
+  preferredAirline       String?
+  preferredSeat          String?
+  baggageAllowance       String?
+  dateOfReturn           String
+  returnPointOfOrigin    String
+  returnDestination      String
+  returnPreferredTime    String
+  returnPreferredAirline String?
+  returnPreferredSeat    String?
+  returnBaggageAllowance String?
+  requestorRemarks       String?
+  status                 FlightBookingStatus @default(DRAFT)
+  currentStage           Int?                @default(1)
+  workflowId             String?
+  createdBy              String
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  accountsManager        String?
+  projectManager         String?
+  requestType            String?             @default("OFFICE_USE")
+  changesRequestedAt     DateTime?
+  checkInTime            DateTime?
+  checkOutTime           DateTime?
+  readyForCheckoutAt     DateTime?
+  stage3Status           String?
+  budgetCode             String?
+  itineraryAttachments   Json?
+  creator                User                @relation(fields: [createdBy], references: [id])
+  project                Project?            @relation(fields: [projectId], references: [id])
+  workflow               WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([dateOfDeparture])
+  @@index([currentStage])
+  @@index([workflowId])
+  @@index([projectId])
+  @@index([requestType])
+  @@index([status, dateOfDeparture])
+}
+
+model VehicleRequisitionForm {
+  id                       String                   @id @default(cuid())
+  referenceNumber          String                   @unique
+  requestorName            String
+  requestDate              DateTime                 @default(now())
+  projectType              String
+  projectName              String?
+  projectId                String?
+  cepdNumber               String?
+  accountsManager          String?
+  projectManager           String?
+  personalUse              Boolean                  @default(false)
+  authorizedRepresentative String?
+  contactNumber            String?
+  vehicleRequested         String
+  vehicleId                String?
+  tripType                 String
+  departureDate            String?
+  departureTime            String?
+  arrivalDate              String?
+  arrivalTime              String?
+  fromLocation             String?
+  fromLocationData         Json?
+  toLocation               String?
+  toLocationData           Json?
+  fromIsPDOffice           Boolean?                 @default(false)
+  toIsPDOffice             Boolean?                 @default(false)
+  calculationMethod        String?
+  cityRate                 Decimal?
+  distanceRate             Decimal?
+  systemRate               Decimal?
+  overtimeRate             Decimal?
+  totalBookingHours        Decimal?
+  vrfAmount                Decimal                  @default(0)
+  totalDistance            String?
+  totalDuration            String?
+  totalDistanceMeters      Int?
+  totalDurationSeconds     Int?
+  generalRemarks           String?
+  workflowId               String?
+  currentStage             Int                      @default(1)
+  status                   VehicleRequisitionStatus @default(DRAFT)
+  createdBy                String
+  requestorRemarks         String?
+  isSpecialWorkflow        Boolean?                 @default(false)
+  assignedToStage2         String?
+  assignedToStage3         String?
+  assignedToStage4         String?
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  processorUserId          String?
+  changesRequestedAt       DateTime?
+  checkInTime              DateTime?
+  checkOutTime             DateTime?
+  readyForCheckoutAt       DateTime?
+  stage4Status             String?
+  budgetCode               String?
+  itineraryRoutes          ItineraryRoute[]
+  creator                  User                     @relation(fields: [createdBy], references: [id])
+  project                  Project?                 @relation(fields: [projectId], references: [id])
+  workflow                 WorkflowDefinition?      @relation(fields: [workflowId], references: [id])
+
+  @@index([referenceNumber])
+  @@index([status])
+  @@index([currentStage])
+  @@index([createdBy])
+  @@index([workflowId])
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+model ItineraryRoute {
+  id                       String                 @id @default(cuid())
+  vehicleRequisitionFormId String
+  routeNo                  String
+  date                     String
+  departureTime            String
+  from                     String
+  fromLocation             Json?
+  to                       String
+  toLocation               Json?
+  endDate                  String
+  arrivalTime              String
+  remarks                  String?
+  calculatedDistance       String?
+  calculatedDuration       String?
+  isCalculated             Boolean?               @default(false)
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+  vehicleRequisitionForm   VehicleRequisitionForm @relation(fields: [vehicleRequisitionFormId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleRequisitionFormId])
+  @@index([routeNo])
+}
+
+model Vehicle {
+  id             String           @id @default(cuid())
+  vehicleId      String           @unique
+  vehicleName    String
+  baseRate       Decimal          @default(0)
+  gasConsumption Decimal          @default(0)
+  status         VehicleStatus    @default(ACTIVE)
+  description    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  fuelType       VehicleFuelType  @default(GAS)
+  bookings       VehicleBooking[]
+
+  @@index([vehicleId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([fuelType])
+}
+
+model VehicleBooking {
+  id            String               @id @default(cuid())
+  vehicleId     String
+  formId        String?
+  title         String
+  startDateTime DateTime
+  endDateTime   DateTime
+  isAllDay      Boolean              @default(false)
+  status        VehicleBookingStatus @default(CONFIRMED)
+  bookedBy      String
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  user          User                 @relation(fields: [bookedBy], references: [id])
+  vehicle       Vehicle              @relation(fields: [vehicleId], references: [vehicleId], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([formId])
+  @@index([bookedBy])
+  @@index([startDateTime])
+  @@index([endDateTime])
+  @@index([status])
+}
+
+model VehicleFees {
+  id            String   @id @default(dbgenerated("gen_random_uuid()"))
+  gasPrice      Decimal  @default(60.00)
+  dieselPrice   Decimal  @default(55.00)
+  baseMealPrice Decimal  @default(200.00)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+model GenOpsPEPForm {
+  id                   String              @id @default(cuid())
+  referenceNumber      String              @unique
+  ceNumber             String?
+  projectName          String
+  companyName          String
+  proponents           Json                @default("[]")
+  department           String              @default("")
+  serviceType          String              @default("")
+  periodCover          String              @default("")
+  venue                String              @default("")
+  coreTeamMembers      Json                @default("[]")
+  ceFileUrl            String?
+  ceFileName           String?
+  ceBlobId             String?
+  status               GenOpsPEPStatus     @default(DRAFT)
+  currentStage         Int?                @default(1)
+  workflowId           String?
+  createdBy            String
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  requestorRemarks     String?
+  projectId            String?
+  cepdFiles            Json                @default("[]")
+  clientId             String?
+  selectedProponentIds Json                @default("[]")
+  businessUnit         String              @default("")
+  client               Client?             @relation(fields: [clientId], references: [id])
+  creator              User                @relation("GenOpsPEPFormCreator", fields: [createdBy], references: [id])
+  project              Project?            @relation(fields: [projectId], references: [id])
+  workflow             WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([createdAt])
+  @@index([workflowId])
+  @@index([projectId])
+  @@index([clientId])
+  @@index([status, createdAt])
+}
+
+model ReimbursementForm {
+  id                     String                      @id @default(cuid())
+  referenceNumber        String                      @unique
+  requestType            String                      @default("REIMBURSEMENT")
+  version                Int                         @default(1)
+  dateOfSubmission       DateTime                    @default(now())
+  projectName            String?
+  brCoverageDateFrom     DateTime?
+  brCoverageDateTo       DateTime?
+  totalBudgetRequested   Decimal                     @default(0) @db.Decimal(15, 2)
+  remarksType            String?
+  requestorRemarks       String?
+  status                 String                      @default("DRAFT")
+  currentStage           Int                         @default(1)
+  workflowId             String?
+  createdBy              String
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+  accountsManager        String?
+  budgetCode             String?
+  budgetItemParticular   String                      @default("Reimbursement")
+  budgetNotesDescription String?
+  budgetQuantity         Decimal                     @default(0) @db.Decimal(10, 2)
+  budgetTotal            Decimal                     @default(0) @db.Decimal(15, 2)
+  budgetUnit             String                      @default("LOT")
+  budgetUnitPrice        Decimal                     @default(0) @db.Decimal(15, 2)
+  cepdNumber             String?
+  projectId              String?
+  projectManager         String?
+  requestorName          String                      @default("")
+  dateOfRelease          DateTime?
+  budgetDays             Decimal                     @default(0) @db.Decimal(10, 2)
+  budgetVenue            Decimal                     @default(0) @db.Decimal(10, 2)
+  creator                User                        @relation(fields: [createdBy], references: [id])
+  project                Project?                    @relation(fields: [projectId], references: [id])
+  workflow               WorkflowDefinition?         @relation(fields: [workflowId], references: [id])
+  receiptEntries         ReimbursementReceiptEntry[]
+
+  @@index([referenceNumber])
+  @@index([createdBy])
+  @@index([status])
+  @@index([workflowId])
+  @@index([projectId])
+  @@index([status, createdAt])
+}
+
+model ReimbursementReceiptEntry {
+  id                         String            @id @default(cuid())
+  reimbursementFormId        String
+  date                       DateTime?
+  customerPointOfTransaction String?
+  descriptionOfTransaction   String?
+  amountOfProof              Decimal           @default(0) @db.Decimal(15, 2)
+  tinOrContactInfo           String?
+  addressLine1Street         String?
+  addressLine1Barangay       String?
+  addressLine2City           String?
+  addressLine2Province       String?
+  invoiceOrNumber            String?
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+  reimbursementForm          ReimbursementForm @relation(fields: [reimbursementFormId], references: [id], onDelete: Cascade)
+
+  @@index([reimbursementFormId])
+}
+
+model CashAdvanceForm {
+  id                     String                 @id @default(cuid())
+  referenceNumber        String                 @unique
+  requestType            String                 @default("CASH_ADVANCE")
+  cepdNumber             String                 @default("")
+  dateOfSubmission       DateTime               @default(now())
+  projectId              String?
+  projectName            String?
+  budgetCode             String?
+  accountsManager        String?
+  projectManager         String?
+  brCoverageDateFrom     DateTime?
+  brCoverageDateTo       DateTime?
+  brRequestor            String                 @default("")
+  budgetItemParticular   String                 @default("Cash Advance")
+  budgetNotesDescription String?
+  budgetQuantity         Decimal                @default(0) @db.Decimal(10, 2)
+  budgetUnit             String                 @default("LOT")
+  budgetUnitPrice        Decimal                @default(0) @db.Decimal(15, 2)
+  budgetTotal            Decimal                @default(0) @db.Decimal(15, 2)
+  totalBudgetRequested   Decimal                @default(0) @db.Decimal(15, 2)
+  remarksType            String?
+  requestorRemarks       String?
+  status                 String                 @default("DRAFT")
+  currentStage           Int                    @default(1)
+  workflowId             String?
+  createdBy              String
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  dateOfRelease          DateTime?
+  budgetDays             Decimal                @default(0) @db.Decimal(10, 2)
+  budgetVenue            Decimal                @default(0) @db.Decimal(10, 2)
+  liquidationReceipts    CALiquidationReceipt[]
+  cashAdvanceEntries     CashAdvanceEntry[]
+  creator                User                   @relation(fields: [createdBy], references: [id])
+  project                Project?               @relation(fields: [projectId], references: [id])
+  workflow               WorkflowDefinition?    @relation(fields: [workflowId], references: [id])
+
+  @@index([referenceNumber])
+  @@index([createdBy])
+  @@index([status])
+  @@index([workflowId])
+  @@index([projectId])
+  @@index([status, createdAt])
+}
+
+model CashAdvanceEntry {
+  id                String          @id @default(cuid())
+  cashAdvanceFormId String
+  itemParticular    String          @default("")
+  notesDescription  String?
+  quantity          Decimal         @default(1) @db.Decimal(10, 2)
+  unitPrice         Decimal         @default(0) @db.Decimal(15, 2)
+  noOfDays          Decimal         @default(1) @db.Decimal(10, 2)
+  noOfVenues        Decimal         @default(1) @db.Decimal(10, 2)
+  amount            Decimal         @default(0) @db.Decimal(15, 2)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  cashAdvanceForm   CashAdvanceForm @relation(fields: [cashAdvanceFormId], references: [id], onDelete: Cascade)
+
+  @@index([cashAdvanceFormId])
+}
+
+model CALiquidationReceipt {
+  id                         String          @id @default(cuid())
+  cashAdvanceFormId          String
+  date                       DateTime
+  customerPointOfTransaction String
+  descriptionOfTransaction   String
+  amountOfProof              Decimal         @db.Decimal(15, 2)
+  tinOrContactInfo           String
+  address                    String
+  invoiceOrNumber            String
+  createdAt                  DateTime        @default(now())
+  updatedAt                  DateTime        @updatedAt
+  cashAdvanceForm            CashAdvanceForm @relation(fields: [cashAdvanceFormId], references: [id], onDelete: Cascade)
+
+  @@index([cashAdvanceFormId])
+}
+
+model RTPForm {
+  id                               String                 @id @default(cuid())
+  referenceNumber                  String                 @unique
+  dateOfRtp                        DateTime               @default(now())
+  selectedVendorId                 String
+  registeredVendorName             String
+  registeredTradeName              String?
+  registeredVendorTin              String
+  registeredVendorAddress          Json
+  requestorProponent               String
+  group                            String
+  department                       String
+  dateOfEngagementFrom             DateTime
+  dateOfEngagementTo               DateTime
+  venueOfEngagement                String?
+  invoiceQuotationNumber           String
+  descriptionOfGoodsServices       String
+  termOfPayment                    String
+  modeOfPayment                    String
+  requestedDateOfRelease           DateTime
+  cashDepositNote                  String?
+  vatRegistration                  String
+  proofOfLiquidation               String
+  billingAmount                    Decimal                @db.Decimal(15, 2)
+  currentStage                     Int                    @default(1)
+  workflowId                       String?
+  createdBy                        String
+  createdAt                        DateTime               @default(now())
+  updatedAt                        DateTime               @updatedAt
+  requestorRemarks                 String?
+  exemptionReason                  String?
+  isCleared                        Boolean?               @default(false)
+  liquidationDueDate               DateTime?
+  treasuryProcessorId              String?
+  billingCertificateGeneratedAt    DateTime?
+  billingCertificateGeneratedBy    String?
+  billingCertificateNumber         String?                @unique
+  billingCertificateBillingAmount  Decimal?               @db.Decimal(15, 2)
+  billingCertificateEngagementFrom DateTime?
+  billingCertificateEngagementTo   DateTime?
+  billingCertificateInvoiceNumber  String?
+  billingCertificateLastEditedAt   DateTime?
+  billingCertificateLastEditedBy   String?
+  billingCertificateVendorName     String?
+  invoiceAttachments               Json?
+  rejectionReason                  String?
+  status                           RTPFormStatus          @default(DRAFT)
+  exemptionReviewedAt              DateTime?
+  exemptionReviewedBy              String?
+  invoiceExemptionReason           String?
+  noInvoiceExemption               Boolean                @default(false)
+  amountType                       String                 @default("INCLUSIVE")
+  isManuallyEdited                 Boolean                @default(false)
+  manualAddVatAmount               Decimal?               @db.Decimal(15, 2)
+  manualAmountDue                  Decimal?               @db.Decimal(15, 2)
+  manualGrossAmount                Decimal?               @db.Decimal(15, 2)
+  manualTotal                      Decimal?               @db.Decimal(15, 2)
+  manualTotalAmountDue             Decimal?               @db.Decimal(15, 2)
+  manualTotalDue                   Decimal?               @db.Decimal(15, 2)
+  manualTotalSales                 Decimal?               @db.Decimal(15, 2)
+  manualVatAmount                  Decimal?               @db.Decimal(15, 2)
+  manualVatableSales               Decimal?               @db.Decimal(15, 2)
+  manualWithholdingTax             Decimal?               @db.Decimal(15, 2)
+  manualVatExemptSales             Decimal?               @db.Decimal(15, 2)
+  manualVatZeroRatedSales          Decimal?               @db.Decimal(15, 2)
+  ewtAllocations                   RTPEWTAllocation[]
+  fieldChangeLogs                  RTPFieldChangeLog[]
+  creator                          User                   @relation(fields: [createdBy], references: [id])
+  workflow                         WorkflowDefinition?    @relation(fields: [workflowId], references: [id])
+  projectAllocations               RTPProjectAllocation[]
+
+  @@index([status])
+  @@index([createdBy])
+  @@index([currentStage])
+  @@index([workflowId])
+  @@index([referenceNumber])
+  @@index([status, createdAt])
+}
+
+model RTPProjectAllocation {
+  id                   String   @id @default(cuid())
+  rtpFormId            String
+  projectId            String?
+  projectName          String?
+  budgetCode           String?
+  ceId                 String?
+  cepdNumber           String?
+  allocatedAmount      Decimal  @db.Decimal(15, 2)
+  ewtCode              String?
+  ewtDescription       String?
+  ewtPercentage        Decimal? @db.Decimal(5, 2)
+  selectedBankId       String?
+  bankName             String?
+  bankBranch           String?
+  accountName          String?
+  accountNumber        String?
+  vatAmount            Decimal  @default(0) @db.Decimal(15, 2)
+  withholdingTaxAmount Decimal  @default(0) @db.Decimal(15, 2)
+  netAmount            Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  quantity             Decimal  @default(1) @db.Decimal(10, 2)
+  unit                 String   @default("LOT")
+  ewtAllocationAmount  Decimal? @db.Decimal(15, 2)
+  ewtCalculatedAmount  Decimal? @db.Decimal(15, 2)
+  chargedAlready       Boolean  @default(false)
+  project              Project? @relation(fields: [projectId], references: [id])
+  rtpForm              RTPForm  @relation(fields: [rtpFormId], references: [id], onDelete: Cascade)
+
+  @@index([rtpFormId])
+  @@index([projectId])
+}
+
+model RTPFieldChangeLog {
+  id          String   @id @default(cuid())
+  rtpFormId   String
+  fieldName   String
+  oldValue    String?
+  newValue    String?
+  stageNumber Int
+  changedBy   String
+  changedAt   DateTime @default(now())
+  user        User     @relation(fields: [changedBy], references: [id])
+  rtpForm     RTPForm  @relation(fields: [rtpFormId], references: [id], onDelete: Cascade)
+
+  @@index([rtpFormId])
+  @@index([changedBy])
+  @@index([changedAt])
+}
+
+model EWTCode {
+  id          String   @id @default(cuid())
+  ewtName     String   @unique
+  description String
+  percentage  Decimal  @db.Decimal(5, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ewtName])
+  @@index([isActive])
+  @@index([ewtName, isActive])
+}
+
+model TodaysNews {
+  id              String              @id @default(cuid())
+  referenceNumber String              @unique
+  title           String
+  content         String
+  publishDate     DateTime
+  status          TodaysNewsStatus    @default(DRAFT)
+  currentStage    Int?                @default(1)
+  workflowId      String?
+  createdBy       String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  category        TodaysNewsCategory
+  endDate         DateTime?
+  startDate       DateTime
+  time            String?
+  venue           String?
+  creator         User                @relation(fields: [createdBy], references: [id])
+  workflow        WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([publishDate])
+  @@index([startDate])
+  @@index([category])
+  @@index([currentStage])
+  @@index([workflowId])
+  @@index([status, publishDate])
+  @@index([referenceNumber])
+}
+
+model RTPEWTAllocation {
+  id             String   @id @default(cuid())
+  rtpFormId      String
+  ewtCode        String
+  ewtDescription String
+  ewtPercentage  Decimal  @db.Decimal(5, 2)
+  baseAmount     Decimal  @db.Decimal(15, 2)
+  taxAmount      Decimal  @db.Decimal(15, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  rtpForm        RTPForm  @relation(fields: [rtpFormId], references: [id], onDelete: Cascade)
+
+  @@index([rtpFormId])
+}
+
+enum Office {
+  PROJECT_DUO_GENERAL_ADMINISTRATION
+  PROJECT_DUO_GENERAL_OPERATIONS
+}
+
+enum Group {
+  ASG
+  AFG
+  SOG
+  CG
+  VICE_PRESIDENT_AND_CHIEF_OPERATIONS_OFFICER
+  N_A
+}
+
+enum Department {
+  ASSETS_AND_PROPERTY_MANAGEMENT
+  PEOPLE_MANAGEMENT
+  ACCOUNTS_PAYABLE
+  ACCOUNTS_RECEIVABLE
+  TREASURY
+  BUSINESS_UNIT_1
+  BUSINESS_UNIT_2
+  BUSINESS_DEVELOPMENT
+  DESIGN_AND_MULTIMEDIA
+  COPY_AND_DIGITAL
+  PROJECT_DUO_EVENTS_AND_MARKETING_CORP
+  N_A
+}
+
+enum ModulePermission {
+  REQUESTOR
+  APPROVER
+  ACCESS
+}
+
+enum IMStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProjectType {
+  BTL_ACTIVATION
+  SPECIAL_EVENT_PRODUCT
+  MERCHANDISING
+  MULTIMEDIA_PRODUCTION
+  IN_TRADE_IN_STORE_EXPO_EXHIBITS_CONVENTIONS
+  FABRICATION_SETUP
+  OTHER_SERVICES
+  GENOPS_PEP
+}
+
+enum ProjectStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum IMCFStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum OpexBudgetStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  PASSWORD_CHANGE
+  PROFILE_UPDATE
+}
+
+enum WorkflowAction {
+  APPROVED
+  REJECTED
+  UNDER_REVIEW
+  PENDING
+  RETURNED
+}
+
+enum BulletinType {
+  BULLETIN
+  ADVISORY
+  POLICY
+}
+
+enum BulletinPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum BulletinStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
+  CANCELLED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  APPROVAL_REQUEST
+  APPROVAL_APPROVED
+  APPROVAL_REJECTED
+}
+
+enum VendorStatus {
+  NEW_RESPONSE
+  VALIDATED
+  APPROVED
+  REJECTED
+  REQUIRES_CHANGES
+  DRAFT
+  EXEMPTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
+
+enum SupplyCategory {
+  OFFICE_SUPPLIES
+  CLEANING_SUPPLIES
+  KITCHEN_SUPPLIES
+  TECH_EQUIPMENT
+  STATIONERY_ITEMS
+  STORAGE_BOXES
+  SAFETY_EQUIPMENT
+  MAINTENANCE_TOOLS
+}
+
+enum SupplyItemStatus {
+  ACTIVE
+  INACTIVE
+  DISCONTINUED
+}
+
+enum SupplyRequisitionStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PARTIALLY_FULFILLED
+  FULFILLED
+}
+
+enum SupplyMovementType {
+  IN_PURCHASE
+  IN_RETURN
+  IN_ADJUSTMENT
+  OUT_REQUISITION
+  OUT_WASTE
+  OUT_ADJUSTMENT
+}
+
+enum JOMSStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum SuppliesRequisitionFormStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum FlightBookingStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum VehicleRequisitionStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum GenOpsPEPStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum RTPFormStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum CEStatus {
+  DRAFT
+  UNDER_REVIEW
+  RE_VALIDATION
+  APPROVED
+  REJECTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  RETIRED
+}
+
+enum VehicleBookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum VehicleFuelType {
+  GAS
+  DIESEL
+}
+
+enum TodaysNewsCategory {
+  PD_BIRTHDAY
+  PDVERSARY
+  PD_GANAP
+  KA_PD_GANAP
+}
+
+enum TodaysNewsStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+  ARCHIVED
+}
+
+// ============================================
+// TICKET ROLES (pdis-tickets)
+// ============================================
+
+enum TicketRole {
+  NORMAL // Regular users who can submit tickets
+  DEVELOPER // Developers who work on tickets
+  QA // QA testers who test tickets
+  PROJECT_MANAGER // Project managers who oversee tickets
+}
+
+// ============================================
+// TICKET MODELS (pdis-tickets)
+// ============================================
+
+model Ticket {
+  id                  String         @id @default(cuid())
+  ticketNumber        String         @unique
+  title               String
+  description         String
+  category            TicketCategory
+  priority            TicketPriority
+  status              TicketStatus   @default(FOR_PD_APPROVAL)
+  stepsToReproduce    String?
+  contactEmail        String
+  contactPhone        String?
+  submitterId         String
+  processOwnerId      String?
+  assignedDeveloperId String?
+  assignedQaId        String?
+  cancellationReason  String?
+  cancelledById       String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  submittedAt         DateTime?
+  cancelledAt         DateTime?
+  deployedAt          DateTime?
+
+  submitter         User                  @relation("TicketSubmitter", fields: [submitterId], references: [id])
+  processOwner      User?                 @relation("TicketProcessOwner", fields: [processOwnerId], references: [id])
+  assignedDeveloper User?                 @relation("TicketDeveloper", fields: [assignedDeveloperId], references: [id])
+  assignedQa        User?                 @relation("TicketQA", fields: [assignedQaId], references: [id])
+  cancelledBy       User?                 @relation("TicketCancelledBy", fields: [cancelledById], references: [id])
+  attachments       TicketAttachment[]
+  comments          TicketComment[]
+  statusHistory     TicketStatusHistory[]
+
+  @@index([status])
+  @@index([submitterId])
+  @@index([priority])
+  @@index([category])
+  @@index([processOwnerId])
+  @@index([assignedDeveloperId])
+  @@index([assignedQaId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([status, priority])
+  @@index([submitterId, status])
+}
+
+model TicketAttachment {
+  id           String   @id @default(cuid())
+  ticketId     String
+  fileName     String
+  fileUrl      String
+  fileSize     Int?
+  fileType     String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+
+  @@index([ticketId])
+  @@index([uploadedById])
+}
+
+model TicketComment {
+  id         String   @id @default(cuid())
+  ticketId   String
+  userId     String
+  content    String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+  @@index([userId])
+  @@index([ticketId, isInternal])
+  @@index([createdAt])
+}
+
+model TicketStatusHistory {
+  id          String        @id @default(cuid())
+  ticketId    String
+  fromStatus  TicketStatus?
+  toStatus    TicketStatus
+  changedById String
+  reason      String?
+  createdAt   DateTime      @default(now())
+  changedBy   User          @relation(fields: [changedById], references: [id])
+  ticket      Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([changedById])
+  @@index([createdAt])
+}
+
+// Ticket enums
+enum TicketCategory {
+  BUG
+  FEATURE_REQUEST
+  ENHANCEMENT
+  SUPPORT
+  TASK
+  OTHER
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  FOR_PD_APPROVAL
+  SUBMITTED
+  CANCELLED
+  DEV_IN_PROGRESS
+  QA_TESTING
+  PD_TESTING
+  FOR_DEPLOYMENT
+  DEPLOYED
+}

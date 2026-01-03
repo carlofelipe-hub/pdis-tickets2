@@ -23,6 +23,11 @@ export default withAuth(
           return true
         }
 
+        // External API routes (bypass session auth - use API key instead)
+        if (pathname.startsWith("/api/external/")) {
+          return true
+        }
+
         // Protected routes require authentication
         return !!token
       },

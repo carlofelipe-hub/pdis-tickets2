@@ -36,10 +36,7 @@ type TicketFormData = z.infer<typeof ticketSchema>
 
 const categoryOptions = [
   { value: "BUG", label: "Bug Report", icon: Bug, color: "text-red-400", description: "Something isn't working correctly" },
-  { value: "FEATURE_REQUEST", label: "Feature Request", icon: Lightbulb, color: "text-yellow-400", description: "Request a new feature" },
-  { value: "ENHANCEMENT", label: "Enhancement", icon: Wrench, color: "text-blue-400", description: "Improve existing functionality" },
   { value: "SUPPORT", label: "Support", icon: HelpCircle, color: "text-green-400", description: "Get help with an issue" },
-  { value: "TASK", label: "Task", icon: CheckCircle2, color: "text-purple-400", description: "General task or to-do" },
   { value: "OTHER", label: "Other", icon: TicketIcon, color: "text-slate-400", description: "Doesn't fit other categories" },
 ]
 
@@ -281,7 +278,6 @@ function NewTicketForm() {
                     <SelectItem key={option.value} value={option.value}>
                       <div className="flex flex-col">
                         <span>{option.label}</span>
-                        <span className="text-xs text-muted-foreground">{option.description}</span>
                       </div>
                     </SelectItem>
                   ))}

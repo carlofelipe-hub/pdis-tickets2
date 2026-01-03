@@ -380,11 +380,25 @@ export default function PMPage() {
                     <TableHeader>
                       <TableRow className="border-border hover:bg-transparent">
                         <TableHead className="text-muted-foreground">Ticket</TableHead>
+                        {activeTab === "submitted" ? (
+                          <>
+                            <TableHead className="text-muted-foreground">Description</TableHead>
+                          </>
+                        ) : (
+                          <>
+                          </>
+                        )}
                         <TableHead className="text-muted-foreground">Category</TableHead>
                         <TableHead className="text-muted-foreground">Priority</TableHead>
                         <TableHead className="text-muted-foreground">Status</TableHead>
-                        <TableHead className="text-muted-foreground">Developer</TableHead>
-                        <TableHead className="text-muted-foreground">QA</TableHead>
+                        {activeTab === "submitted" ? (
+                          <></>
+                        ) : (
+                          <>
+                            <TableHead className="text-muted-foreground">Developer</TableHead>
+                            <TableHead className="text-muted-foreground">QA</TableHead>
+                          </>
+                        )}
                         <TableHead className="text-muted-foreground">Submitted</TableHead>
                         <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                       </TableRow>
@@ -405,6 +419,15 @@ export default function PMPage() {
                               </span>
                             </div>
                           </TableCell>
+                          {activeTab === "submitted" ? (
+                            <TableCell className="max-w-xs">
+                              <span className="text-foreground/80 text-sm block overflow-hidden text-ellipsis whitespace-nowrap">
+                                {ticket.description}
+                              </span>
+                            </TableCell>
+                          ) : (
+                            <></>
+                          )}
                           <TableCell>
                             <div className="flex items-center gap-2">
                               {categoryIcons[ticket.category]}
@@ -423,16 +446,23 @@ export default function PMPage() {
                               {formatStatus(ticket.status)}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            <span className={ticket.assignedDeveloper ? "text-foreground text-sm" : "text-muted-foreground text-sm italic"}>
-                              {getUserDisplayName(ticket.assignedDeveloper)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className={ticket.assignedQa ? "text-foreground text-sm" : "text-muted-foreground text-sm italic"}>
-                              {getUserDisplayName(ticket.assignedQa)}
-                            </span>
-                          </TableCell>
+                          {activeTab === "submitted" ? (
+                            <></>
+                          ) : (
+                            <>
+                              <TableCell>
+                                <span className={ticket.assignedDeveloper ? "text-foreground text-sm" : "text-muted-foreground text-sm italic"}>
+                                  {getUserDisplayName(ticket.assignedDeveloper)}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <span className={ticket.assignedQa ? "text-foreground text-sm" : "text-muted-foreground text-sm italic"}>
+                                  {getUserDisplayName(ticket.assignedQa)}
+                                </span>
+                              </TableCell>
+                            </>
+                          )}
+
                           <TableCell className="text-muted-foreground text-sm">
                             {ticket.submittedAt 
                               ? formatDistanceToNow(new Date(ticket.submittedAt), { addSuffix: true })

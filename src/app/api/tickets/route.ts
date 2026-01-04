@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { TicketCategory, TicketPriority, TicketStatus, Prisma } from "@prisma/client"
 import { buildUserTicketsWhereClause } from "@/lib/ticket-filters"
+import { canCreateTickets, getAccessDenialReason } from "@/lib/access-control"
 
 const createTicketSchema = z.object({
   title: z.string().min(5).max(200),
@@ -138,6 +139,14 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Check if user can create tickets
+    if (!canCreateTickets(session.user.email)) {
+      return NextResponse.json(
+        { error: getAccessDenialReason('create') },
+        { status: 403 }
+      )
     }
 
     const body = await request.json()

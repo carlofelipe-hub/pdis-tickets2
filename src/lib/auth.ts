@@ -5,6 +5,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "./prisma"
 import bcrypt from "bcryptjs"
 import { TicketRole } from "@/types/next-auth"
+import { isTicketApprover, canCreateTickets } from "./access-control"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -95,6 +96,8 @@ export const authOptions: NextAuthOptions = {
           token.isOfficeHead = dbUser.isOfficeHead
           token.isGroupDirector = dbUser.isGroupDirector
           token.ticketRole = ((dbUser as { ticketRole?: string }).ticketRole as TicketRole) || "NORMAL"
+          token.isTicketApprover = isTicketApprover(dbUser.email)
+          token.canCreateTickets = canCreateTickets(dbUser.email)
         }
       }
 
@@ -115,6 +118,8 @@ export const authOptions: NextAuthOptions = {
         session.user.isOfficeHead = token.isOfficeHead as boolean
         session.user.isGroupDirector = token.isGroupDirector as boolean
         session.user.ticketRole = token.ticketRole as "NORMAL" | "DEVELOPER" | "QA" | "PROJECT_MANAGER"
+        session.user.isTicketApprover = token.isTicketApprover as boolean
+        session.user.canCreateTickets = token.canCreateTickets as boolean
       }
       return session
     },

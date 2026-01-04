@@ -93,9 +93,7 @@ export default function ApprovalsPage() {
   const [reason, setReason] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const isProcessOwner = session?.user?.isDepartmentHead || 
-                          session?.user?.isOfficeHead || 
-                          session?.user?.isGroupDirector
+  const isProcessOwner = session?.user?.isTicketApprover
 
   useEffect(() => {
     if (status === "loading") return

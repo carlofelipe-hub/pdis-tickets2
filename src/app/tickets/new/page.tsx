@@ -88,6 +88,16 @@ function NewTicketForm() {
     }
   }, [session, setValue])
 
+  // Check if user can create tickets
+  useEffect(() => {
+    if (!session) return
+
+    if (session.user && !session.user.canCreateTickets) {
+      toast.error("You do not have permission to create tickets")
+      router.push("/dashboard")
+    }
+  }, [session, router])
+
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files

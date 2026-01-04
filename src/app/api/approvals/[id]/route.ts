@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+import { isTicketApprover, getAccessDenialReason } from "@/lib/access-control"
 
 const approvalSchema = z.object({
   action: z.enum(["approve", "reject"]),
@@ -21,14 +22,12 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Only process owners can approve/reject
-    const isProcessOwner = 
-      session.user.isDepartmentHead ||
-      session.user.isOfficeHead ||
-      session.user.isGroupDirector
-
-    if (!isProcessOwner) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    // Check if user is an approver (email-based)
+    if (!isTicketApprover(session.user.email)) {
+      return NextResponse.json(
+        { error: getAccessDenialReason('approve') },
+        { status: 403 }
+      )
     }
 
     const { id } = await params

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isTicketApprover, getAccessDenialReason } from "@/lib/access-control"
 
 // GET /api/approvals - Get pending tickets for approval
 export async function GET() {
@@ -12,14 +13,12 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Only process owners can view pending approvals
-    const isProcessOwner = 
-      session.user.isDepartmentHead ||
-      session.user.isOfficeHead ||
-      session.user.isGroupDirector
-
-    if (!isProcessOwner) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    // Check if user is an approver (email-based)
+    if (!isTicketApprover(session.user.email)) {
+      return NextResponse.json(
+        { error: getAccessDenialReason('approve') },
+        { status: 403 }
+      )
     }
 
     // Get all tickets awaiting approval

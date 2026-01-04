@@ -23,6 +23,8 @@ declare module "next-auth" {
       isOfficeHead: boolean
       isGroupDirector: boolean
       ticketRole: TicketRole
+      isTicketApprover: boolean
+      canCreateTickets: boolean
     }
   }
 
@@ -49,6 +51,8 @@ declare module "next-auth/jwt" {
     isOfficeHead: boolean
     isGroupDirector: boolean
     ticketRole: TicketRole
+    isTicketApprover: boolean
+    canCreateTickets: boolean
   }
 }
 

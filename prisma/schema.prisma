@@ -107,12 +107,14 @@ model User {
   address                          Address?                  @relation(fields: [addressId], references: [id])
   supervisor                       User?                     @relation("UserSupervisor", fields: [immediateSupervisor], references: [id])
   subordinates                     User[]                    @relation("UserSupervisor")
+  adminAuditLogs                   AdminAuditLog[]
   auditLogsAsActor                 UserAuditLog[]            @relation("UserAuditActor")
   auditLogsAsTarget                UserAuditLog[]            @relation("UserAuditTarget")
   vehicleBookings                  VehicleBooking[]
   vehicleRequisitionForms          VehicleRequisitionForm[]
   createdVendors                   Vendor[]                  @relation("VendorCreator")
   reviewedVendors                  Vendor[]
+  approvedVendors                  ApprovedVendors[]         @relation("ApprovedVendorApprover")
   createdAssignments               WorkflowAssignment[]      @relation("AssignedBy")
   assignedWorkflows                WorkflowAssignment[]      @relation("AssignedTo")
   createdWorkflows                 WorkflowDefinition[]
@@ -127,6 +129,51 @@ model User {
   ticketComments      TicketComment[]
   ticketStatusChanges TicketStatusHistory[]
 
+  // PEP Document History
+  pepDocumentHistory PEPDocumentHistory[] @relation("PEPDocumentHistoryUser")
+
+  // NEW INVERSE RELATIONS (Priority 1 Refactoring)
+  // IMCFForm manager relations
+  imcfAccountsManager IMCFForm[] @relation("IMCFAccountsManager")
+  imcfProjectManager  IMCFForm[] @relation("IMCFProjectManager")
+
+  // ReimbursementForm manager relations
+  reimbursementAccountsManager ReimbursementForm[] @relation("ReimbursementAccountsManager")
+  reimbursementProjectManager  ReimbursementForm[] @relation("ReimbursementProjectManager")
+
+  // CashAdvanceForm manager relations
+  cashAdvanceAccountsManager CashAdvanceForm[] @relation("CashAdvanceAccountsManager")
+  cashAdvanceProjectManager  CashAdvanceForm[] @relation("CashAdvanceProjectManager")
+
+  // FlightBooking manager relations
+  flightAccountsManager FlightBooking[] @relation("FlightAccountsManager")
+  flightProjectManager  FlightBooking[] @relation("FlightProjectManager")
+
+  // SuppliesRequisitionForm relations
+  suppliesAccountsManager SuppliesRequisitionForm[] @relation("SuppliesAccountsManager")
+  suppliesProjectManager  SuppliesRequisitionForm[] @relation("SuppliesProjectManager")
+  suppliesStage2Assignee  SuppliesRequisitionForm[] @relation("SuppliesStage2Assignee")
+  suppliesStage3Assignee  SuppliesRequisitionForm[] @relation("SuppliesStage3Assignee")
+  suppliesStage4Assignee  SuppliesRequisitionForm[] @relation("SuppliesStage4Assignee")
+  suppliesProcessor       SuppliesRequisitionForm[] @relation("SuppliesProcessor")
+
+  // JOMSForm relations
+  jomsStage2Assignee JOMSForm[] @relation("JOMSStage2Assignee")
+  jomsStage3Assignee JOMSForm[] @relation("JOMSStage3Assignee")
+  jomsStage4Assignee JOMSForm[] @relation("JOMSStage4Assignee")
+  jomsProcessor      JOMSForm[] @relation("JOMSProcessor")
+
+  // VehicleRequisitionForm relations
+  vehicleAccountsManager VehicleRequisitionForm[] @relation("VehicleAccountsManager")
+  vehicleProjectManager  VehicleRequisitionForm[] @relation("VehicleProjectManager")
+  vehicleStage2Assignee  VehicleRequisitionForm[] @relation("VehicleStage2Assignee")
+  vehicleStage3Assignee  VehicleRequisitionForm[] @relation("VehicleStage3Assignee")
+  vehicleStage4Assignee  VehicleRequisitionForm[] @relation("VehicleStage4Assignee")
+  vehicleProcessor       VehicleRequisitionForm[] @relation("VehicleProcessor")
+
+  // RTPForm processor relation
+  rtpProcessor RTPForm[] @relation("RTPProcessor")
+
   @@index([office])
   @@index([group])
   @@index([department])
@@ -140,7 +187,6 @@ model User {
   @@index([group, isGroupDirector])
   @@index([department, isDepartmentHead])
   @@index([canViewAllBudgetCodesAndProjects])
-  @@index([deletedAt])
   @@index([ticketRole])
 }
 
@@ -173,6 +219,21 @@ model PasswordResetToken {
   @@index([email])
   @@index([token])
   @@index([expires])
+}
+
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  details   Json
+  timestamp DateTime @default(now())
+  ipAddress String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+  @@index([userId, timestamp])
 }
 
 model Address {
@@ -245,7 +306,7 @@ model IM {
 model Project {
   id                       String                    @id @default(cuid())
   projectName              String
-  type                     ProjectType?
+  type                     String?
   projectDate              DateTime?
   projectVenue             String?
   accountManager           String?
@@ -256,6 +317,8 @@ model Project {
   companyName              String?
   proponent                String?
   brand                    String?
+  businessUnit             String?
+  department               String?
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   internalBudgetCurrent    Decimal?
@@ -276,6 +339,7 @@ model Project {
   reimbursementForms       ReimbursementForm[]
   suppliesRequisitionForms SuppliesRequisitionForm[]
   vehicleRequisitionForms  VehicleRequisitionForm[]
+  pepDocumentHistory       PEPDocumentHistory[]
 
   @@index([createdAt])
   @@index([accountManager])
@@ -409,32 +473,48 @@ model CustomTab {
 }
 
 model IMCFForm {
-  id                 String              @id @default(cuid())
-  referenceNumber    String              @unique
+  id                 String     @id @default(cuid())
+  referenceNumber    String     @unique
   projectID          String?
   ceID               String?
   clearanceRequestor String
   department         String
   group              String?
-  dateOfRequest      DateTime            @default(now())
+  dateOfRequest      DateTime   @default(now())
   targetReleaseDate  DateTime?
   coverageFromDate   DateTime?
   coverageToDate     DateTime?
   requestorRemarks   String?
-  status             IMCFStatus          @default(DRAFT)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  currentStage       Int?                @default(1)
+  status             IMCFStatus @default(DRAFT)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  currentStage       Int?       @default(1)
   workflowId         String?
   budgetCode         String?
-  accountsManager    String?
-  projectManager     String?
-  requestType        String?             @default("OFFICE_USE")
-  ce                 CE?                 @relation(fields: [ceID], references: [id])
-  requestor          User                @relation(fields: [clearanceRequestor], references: [id])
-  project            Project?            @relation(fields: [projectID], references: [id])
-  workflow           WorkflowDefinition? @relation(fields: [workflowId], references: [id])
-  personnel          IMCFPersonnel[]
+  accountsManager    String? // DEPRECATED: Use accountsManagerId instead
+  projectManager     String? // DEPRECATED: Use projectManagerId instead
+  requestType        String?    @default("OFFICE_USE")
+  totalAmount        Decimal    @default(0) @db.Decimal(15, 2)
+
+  // SAP Integration fields
+  sapDocNum          Int?
+  sapDocEntry        Int?
+  sapIntegrationDate DateTime?
+
+  // NEW FOREIGN KEY FIELDS (Priority 1 Refactoring)
+  accountsManagerId String?
+  projectManagerId  String?
+  deletedAt         DateTime?
+
+  ce        CE?                 @relation(fields: [ceID], references: [id])
+  requestor User                @relation(fields: [clearanceRequestor], references: [id])
+  project   Project?            @relation(fields: [projectID], references: [id])
+  workflow  WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+  personnel IMCFPersonnel[]
+
+  // NEW RELATIONS (Priority 1 Refactoring)
+  accountsManagerUser User? @relation("IMCFAccountsManager", fields: [accountsManagerId], references: [id])
+  projectManagerUser  User? @relation("IMCFProjectManager", fields: [projectManagerId], references: [id])
 
   @@index([projectID])
   @@index([ceID])
@@ -446,6 +526,11 @@ model IMCFForm {
   @@index([requestType])
   @@index([status, dateOfRequest])
   @@index([status, currentStage])
+  @@index([accountsManagerId])
+  @@index([projectManagerId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
+  @@index([sapDocNum])
 }
 
 model IMCFPersonnel {
@@ -491,6 +576,7 @@ model OpexBudgetForm {
   updatedAt        DateTime            @updatedAt
   currentStage     Int?                @default(1)
   workflowId       String?
+  deletedAt        DateTime?
   creator          User                @relation(fields: [createdBy], references: [id])
   workflow         WorkflowDefinition? @relation(fields: [workflowId], references: [id])
   budgetLines      OpexBudgetLine[]
@@ -500,6 +586,8 @@ model OpexBudgetForm {
   @@index([createdAt])
   @@index([status, createdAt])
   @@index([workflowId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
 }
 
 model OpexBudgetLine {
@@ -701,6 +789,7 @@ model Bulletin {
   status                 BulletinStatus           @default(DRAFT)
   referenceNumber        String?                  @unique
   blobId                 String?
+  deletedAt              DateTime?
   creator                User                     @relation(fields: [createdBy], references: [id])
   workflow               WorkflowDefinition?      @relation(fields: [workflowId], references: [id])
   acknowledgments        BulletinAcknowledgment[]
@@ -720,6 +809,8 @@ model Bulletin {
   @@index([status])
   @@index([status, currentStage])
   @@index([referenceNumber])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
 }
 
 model BulletinAcknowledgment {
@@ -951,11 +1042,20 @@ model Vendor {
   auditedFs                                Boolean             @default(false)
   brgyClearance                            Boolean             @default(false)
   googleDriveLink                          String?
+  deletedAt                                DateTime?
   creator                                  User?               @relation("VendorCreator", fields: [createdBy], references: [id])
   reviewer                                 User?               @relation(fields: [reviewedBy], references: [id])
   workflow                                 WorkflowDefinition? @relation(fields: [workflowId], references: [id])
   banks                                    VendorBank[]
   ewts                                     VendorEWT[]
+
+  // NEW INVERSE RELATION (Priority 1 Refactoring)
+  rtpForms RTPForm[]
+
+  // ApprovedVendors migration tracking
+  approvedVendorId   String? // Reference to ApprovedVendors if migrated
+  approvedVendors    ApprovedVendors[] @relation("OriginalVendor")
+  migratedToApproved ApprovedVendors?  @relation("MigratedToApproved", fields: [approvedVendorId], references: [id])
 
   @@index([status])
   @@index([businessType])
@@ -972,40 +1072,127 @@ model Vendor {
   @@index([currentStage])
   @@index([createdBy])
   @@index([status, currentStage])
+  @@index([approvedVendorId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
+}
+
+// ApprovedVendors: Normalized vendor table for approved vendors
+model ApprovedVendors {
+  id              String @id @default(cuid())
+  referenceNumber String @unique
+
+  // Normalized vendor information
+  registeredVendorName   String?
+  tradeName              String?
+  addressUnitNoFloorBldg String?
+  brgy                   String?
+  cityMunicipality       String?
+  province               String?
+  zipCode                String?
+
+  // Business classification
+  typeOfBusiness      String? // Individual, Sole Proprietor, Corporation, Not Registered, Partnership
+  lineOfBusiness      String?
+  businessDescription String?
+
+  // Contact person
+  contactPersonLastName      String?
+  contactPersonFirstName     String?
+  contactPersonMiddleInitial String?
+  contactPersonPosition      String?
+  contactPersonMobileNumber  String?
+  contactPersonEmailAddress  String?
+
+  // Tax information
+  tinNumber          String?
+  vatType            String?
+  proofOfLiquidation String?
+
+  // Accreditation flags (boolean)
+  dtiCertificate         Boolean @default(false)
+  secCertificate         Boolean @default(false)
+  businessPermit         Boolean @default(false)
+  bir2303                Boolean @default(false)
+  govtIssuedId1          Boolean @default(false)
+  govtIssuedId2          Boolean @default(false)
+  auditedFs              Boolean @default(false)
+  brgyPoliceNbiClearance Boolean @default(false)
+
+  // Sample documents (Google Drive links)
+  sampleBilling    String?
+  sampleOfficial   String?
+  sampleSales      String?
+  sampleCollection String?
+  otherDocs        String?
+  googleDriveLink  String?
+
+  // Metadata
+  approvedAt       DateTime @default(now())
+  approvedBy       String?
+  originalVendorId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  approver        User?        @relation("ApprovedVendorApprover", fields: [approvedBy], references: [id])
+  originalVendor  Vendor?      @relation("OriginalVendor", fields: [originalVendorId], references: [id])
+  migratedVendors Vendor[]     @relation("MigratedToApproved")
+  banks           VendorBank[]
+  ewts            VendorEWT[]
+  rtpForms        RTPForm[]
+
+  @@index([referenceNumber])
+  @@index([registeredVendorName])
+  @@index([approvedAt])
+  @@index([approvedBy])
+  @@index([originalVendorId])
+  @@index([typeOfBusiness])
+  @@index([lineOfBusiness])
 }
 
 model VendorBank {
-  id            String   @id @default(cuid())
-  vendorId      String
-  bankName      String
-  bankBranch    String?
-  accountName   String
-  accountNumber String
-  checkCapable  Boolean  @default(false)
-  isPrimary     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  vendorId         String? // Made nullable to support ApprovedVendors
+  approvedVendorId String? // New FK for ApprovedVendors
+  bankName         String
+  bankBranch       String?
+  accountName      String
+  accountNumber    String
+  checkCapable     Boolean  @default(false)
+  isPrimary        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  vendor         Vendor?          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  approvedVendor ApprovedVendors? @relation(fields: [approvedVendorId], references: [id], onDelete: Cascade)
 
   @@index([vendorId])
+  @@index([approvedVendorId])
   @@index([isPrimary])
   @@index([vendorId, isPrimary])
+  @@index([approvedVendorId, isPrimary])
 }
 
 model VendorEWT {
-  id             String   @id @default(cuid())
-  vendorId       String
-  ewtCode        String
-  ewtDescription String
-  ewtPercentage  String
-  isPrimary      Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  vendor         Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  vendorId         String? // Made nullable to support ApprovedVendors
+  approvedVendorId String? // New FK for ApprovedVendors
+  ewtCode          String
+  ewtDescription   String
+  ewtPercentage    String
+  isPrimary        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  vendor         Vendor?          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  approvedVendor ApprovedVendors? @relation(fields: [approvedVendorId], references: [id], onDelete: Cascade)
 
   @@index([vendorId])
+  @@index([approvedVendorId])
   @@index([isPrimary])
   @@index([vendorId, isPrimary])
+  @@index([approvedVendorId, isPrimary])
 }
 
 model Client {
@@ -1187,38 +1374,56 @@ model SupplyEditLog {
 }
 
 model SuppliesRequisitionForm {
-  id                        String                             @id @default(cuid())
-  referenceNumber           String                             @unique
-  requestorName             String
-  department                String?
-  contactNumber             String?
-  dateOfRequest             DateTime                           @default(now())
-  projectId                 String?
-  ceId                      String?
-  dateNeeded                DateTime?
-  totalAmount               Decimal                            @default(0)
-  status                    SuppliesRequisitionFormStatus      @default(DRAFT)
-  currentStage              Int?                               @default(1)
-  workflowId                String?
-  createdBy                 String
-  createdAt                 DateTime                           @default(now())
-  updatedAt                 DateTime                           @updatedAt
-  requestorRemarks          String?
-  isSpecialWorkflow         Boolean?                           @default(true)
-  assignedToStage2          String?
-  assignedToStage3          String?
-  assignedToStage4          String?
-  budgetCode                String?
-  accountsManager           String?
-  projectManager            String?
-  requestType               String?                            @default("OFFICE_USE")
-  processorUserId           String?
+  id                String                        @id @default(cuid())
+  referenceNumber   String                        @unique
+  requestorName     String // DEPRECATED: Use creator.name instead
+  department        String?
+  contactNumber     String?
+  dateOfRequest     DateTime                      @default(now())
+  projectId         String?
+  ceId              String?
+  dateNeeded        DateTime?
+  totalAmount       Decimal                       @default(0)
+  status            SuppliesRequisitionFormStatus @default(DRAFT)
+  currentStage      Int?                          @default(1)
+  workflowId        String?
+  createdBy         String
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
+  requestorRemarks  String?
+  isSpecialWorkflow Boolean?                      @default(true)
+  assignedToStage2  String? // DEPRECATED: Use assignedToStage2Id instead
+  assignedToStage3  String? // DEPRECATED: Use assignedToStage3Id instead
+  assignedToStage4  String? // DEPRECATED: Use assignedToStage4Id instead
+  budgetCode        String?
+  accountsManager   String? // DEPRECATED: Use accountsManagerId instead
+  projectManager    String? // DEPRECATED: Use projectManagerId instead
+  requestType       String?                       @default("OFFICE_USE")
+  processorUserId   String? // DEPRECATED: Use processorId instead
+
+  // NEW FOREIGN KEY FIELDS (Priority 1 Refactoring)
+  accountsManagerId  String?
+  projectManagerId   String?
+  assignedToStage2Id String?
+  assignedToStage3Id String?
+  assignedToStage4Id String?
+  processorId        String?
+  deletedAt          DateTime?
+
   authorizedRepresentatives SuppliesRequisitionAuthorizedRep[]
   ce                        CE?                                @relation(fields: [ceId], references: [id])
   creator                   User                               @relation(fields: [createdBy], references: [id])
   project                   Project?                           @relation(fields: [projectId], references: [id])
   workflow                  WorkflowDefinition?                @relation(fields: [workflowId], references: [id])
   items                     SuppliesRequisitionItem[]
+
+  // NEW RELATIONS (Priority 1 Refactoring)
+  accountsManagerUser  User? @relation("SuppliesAccountsManager", fields: [accountsManagerId], references: [id])
+  projectManagerUser   User? @relation("SuppliesProjectManager", fields: [projectManagerId], references: [id])
+  assignedToStage2User User? @relation("SuppliesStage2Assignee", fields: [assignedToStage2Id], references: [id])
+  assignedToStage3User User? @relation("SuppliesStage3Assignee", fields: [assignedToStage3Id], references: [id])
+  assignedToStage4User User? @relation("SuppliesStage4Assignee", fields: [assignedToStage4Id], references: [id])
+  processorUser        User? @relation("SuppliesProcessor", fields: [processorId], references: [id])
 
   @@index([createdBy])
   @@index([status])
@@ -1232,13 +1437,21 @@ model SuppliesRequisitionForm {
   @@index([assignedToStage3])
   @@index([assignedToStage4])
   @@index([status, dateOfRequest])
+  @@index([accountsManagerId])
+  @@index([projectManagerId])
+  @@index([assignedToStage2Id])
+  @@index([assignedToStage3Id])
+  @@index([assignedToStage4Id])
+  @@index([processorId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
 }
 
 model JOMSForm {
-  id                     String              @id @default(cuid())
-  referenceNumber        String              @unique
+  id                     String     @id @default(cuid())
+  referenceNumber        String     @unique
   requestor              String
-  dateOfRequest          DateTime            @default(now())
+  dateOfRequest          DateTime   @default(now())
   natureOfTrip           String
   locationDestination    String
   otherSupportingDetails String
@@ -1246,19 +1459,38 @@ model JOMSForm {
   timeRangeStart         String
   timeRangeEnd           String
   requestorRemarks       String?
-  status                 JOMSStatus          @default(DRAFT)
-  currentStage           Int?                @default(1)
+  status                 JOMSStatus @default(DRAFT)
+  currentStage           Int?       @default(1)
   workflowId             String?
   createdBy              String
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  assignedToStage2       String?
-  assignedToStage3       String?
-  assignedToStage4       String?
-  isSpecialWorkflow      Boolean?            @default(true)
-  processorUserId        String?
-  creator                User                @relation(fields: [createdBy], references: [id])
-  workflow               WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  assignedToStage2       String? // DEPRECATED: Use assignedToStage2Id instead
+  assignedToStage3       String? // DEPRECATED: Use assignedToStage3Id instead
+  assignedToStage4       String? // DEPRECATED: Use assignedToStage4Id instead
+  isSpecialWorkflow      Boolean?   @default(true)
+  processorUserId        String? // DEPRECATED: Use processorId instead
+
+  // NEW FOREIGN KEY FIELDS (Priority 1 Refactoring)
+  assignedToStage2Id String?
+  assignedToStage3Id String?
+  assignedToStage4Id String?
+  processorId        String?
+  deletedAt          DateTime?
+
+  creator  User                @relation(fields: [createdBy], references: [id])
+  workflow WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+
+  // NEW RELATIONS (Priority 1 Refactoring)
+  assignedToStage2User User? @relation("JOMSStage2Assignee", fields: [assignedToStage2Id], references: [id])
+  assignedToStage3User User? @relation("JOMSStage3Assignee", fields: [assignedToStage3Id], references: [id])
+  assignedToStage4User User? @relation("JOMSStage4Assignee", fields: [assignedToStage4Id], references: [id])
+  processorUser        User? @relation("JOMSProcessor", fields: [processorId], references: [id])
+
+  // Image upload fields for Stage 4
+  stage4ImageUrl      String? // Full CDN URL from Vercel Blob
+  stage4ImageFilename String? // Original filename for display
+  stage4BlobId        String? // Blob identifier for cleanup/retrieval
 
   @@index([createdBy])
   @@index([status])
@@ -1268,6 +1500,12 @@ model JOMSForm {
   @@index([assignedToStage3])
   @@index([assignedToStage4])
   @@index([createdAt])
+  @@index([assignedToStage2Id])
+  @@index([assignedToStage3Id])
+  @@index([assignedToStage4Id])
+  @@index([processorId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
 }
 
 model SuppliesRequisitionItem {
@@ -1303,7 +1541,7 @@ model FlightBooking {
   id                     String              @id @default(cuid())
   referenceNumber        String              @unique
   projectId              String?
-  projectName            String
+  projectName            String // DEPRECATED: Use project.projectName instead
   projectType            String
   ceNumber               String?
   numberOfPassengers     String
@@ -1329,8 +1567,8 @@ model FlightBooking {
   createdBy              String
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
-  accountsManager        String?
-  projectManager         String?
+  accountsManager        String? // DEPRECATED: Use accountsManagerId instead
+  projectManager         String? // DEPRECATED: Use projectManagerId instead
   requestType            String?             @default("OFFICE_USE")
   changesRequestedAt     DateTime?
   checkInTime            DateTime?
@@ -1338,10 +1576,22 @@ model FlightBooking {
   readyForCheckoutAt     DateTime?
   stage3Status           String?
   budgetCode             String?
+  estimatedCost          Decimal?            @default(0)
   itineraryAttachments   Json?
-  creator                User                @relation(fields: [createdBy], references: [id])
-  project                Project?            @relation(fields: [projectId], references: [id])
-  workflow               WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+  itineraryLink          String?
+
+  // NEW FOREIGN KEY FIELDS (Priority 1 Refactoring)
+  accountsManagerId String?
+  projectManagerId  String?
+  deletedAt         DateTime?
+
+  creator  User                @relation(fields: [createdBy], references: [id])
+  project  Project?            @relation(fields: [projectId], references: [id])
+  workflow WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+
+  // NEW RELATIONS (Priority 1 Refactoring)
+  accountsManagerUser User? @relation("FlightAccountsManager", fields: [accountsManagerId], references: [id])
+  projectManagerUser  User? @relation("FlightProjectManager", fields: [projectManagerId], references: [id])
 
   @@index([createdBy])
   @@index([status])
@@ -1349,21 +1599,25 @@ model FlightBooking {
   @@index([currentStage])
   @@index([workflowId])
   @@index([projectId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
   @@index([requestType])
   @@index([status, dateOfDeparture])
+  @@index([accountsManagerId])
+  @@index([projectManagerId])
 }
 
 model VehicleRequisitionForm {
   id                       String                   @id @default(cuid())
   referenceNumber          String                   @unique
-  requestorName            String
+  requestorName            String // DEPRECATED: Use creator.name instead
   requestDate              DateTime                 @default(now())
   projectType              String
-  projectName              String?
+  projectName              String? // DEPRECATED: Use project.projectName instead
   projectId                String?
   cepdNumber               String?
-  accountsManager          String?
-  projectManager           String?
+  accountsManager          String? // DEPRECATED: Use accountsManagerId instead
+  projectManager           String? // DEPRECATED: Use projectManagerId instead
   personalUse              Boolean                  @default(false)
   authorizedRepresentative String?
   contactNumber            String?
@@ -1398,22 +1652,41 @@ model VehicleRequisitionForm {
   createdBy                String
   requestorRemarks         String?
   isSpecialWorkflow        Boolean?                 @default(false)
-  assignedToStage2         String?
-  assignedToStage3         String?
-  assignedToStage4         String?
+  assignedToStage2         String? // DEPRECATED: Use assignedToStage2Id instead
+  assignedToStage3         String? // DEPRECATED: Use assignedToStage3Id instead
+  assignedToStage4         String? // DEPRECATED: Use assignedToStage4Id instead
   createdAt                DateTime                 @default(now())
   updatedAt                DateTime                 @updatedAt
-  processorUserId          String?
+  processorUserId          String? // DEPRECATED: Use processorId instead
   changesRequestedAt       DateTime?
   checkInTime              DateTime?
   checkOutTime             DateTime?
   readyForCheckoutAt       DateTime?
   stage4Status             String?
   budgetCode               String?
-  itineraryRoutes          ItineraryRoute[]
-  creator                  User                     @relation(fields: [createdBy], references: [id])
-  project                  Project?                 @relation(fields: [projectId], references: [id])
-  workflow                 WorkflowDefinition?      @relation(fields: [workflowId], references: [id])
+  estimatedCost            Decimal?                 @default(0)
+
+  // NEW FOREIGN KEY FIELDS (Priority 1 Refactoring)
+  accountsManagerId  String?
+  projectManagerId   String?
+  assignedToStage2Id String?
+  assignedToStage3Id String?
+  assignedToStage4Id String?
+  processorId        String?
+  deletedAt          DateTime?
+
+  itineraryRoutes ItineraryRoute[]
+  creator         User                @relation(fields: [createdBy], references: [id])
+  project         Project?            @relation(fields: [projectId], references: [id])
+  workflow        WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+
+  // NEW RELATIONS (Priority 1 Refactoring)
+  accountsManagerUser  User? @relation("VehicleAccountsManager", fields: [accountsManagerId], references: [id])
+  projectManagerUser   User? @relation("VehicleProjectManager", fields: [projectManagerId], references: [id])
+  assignedToStage2User User? @relation("VehicleStage2Assignee", fields: [assignedToStage2Id], references: [id])
+  assignedToStage3User User? @relation("VehicleStage3Assignee", fields: [assignedToStage3Id], references: [id])
+  assignedToStage4User User? @relation("VehicleStage4Assignee", fields: [assignedToStage4Id], references: [id])
+  processorUser        User? @relation("VehicleProcessor", fields: [processorId], references: [id])
 
   @@index([referenceNumber])
   @@index([status])
@@ -1422,6 +1695,14 @@ model VehicleRequisitionForm {
   @@index([workflowId])
   @@index([projectId])
   @@index([createdAt])
+  @@index([accountsManagerId])
+  @@index([projectManagerId])
+  @@index([assignedToStage2Id])
+  @@index([assignedToStage3Id])
+  @@index([assignedToStage4Id])
+  @@index([processorId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
 }
 
 model ItineraryRoute {
@@ -1528,6 +1809,7 @@ model GenOpsPEPForm {
   clientId             String?
   selectedProponentIds Json                @default("[]")
   businessUnit         String              @default("")
+  deletedAt            DateTime?
   client               Client?             @relation(fields: [clientId], references: [id])
   creator              User                @relation("GenOpsPEPFormCreator", fields: [createdBy], references: [id])
   project              Project?            @relation(fields: [projectId], references: [id])
@@ -1540,45 +1822,86 @@ model GenOpsPEPForm {
   @@index([projectId])
   @@index([clientId])
   @@index([status, createdAt])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
+}
+
+model PEPDocumentHistory {
+  id          String            @id @default(cuid())
+  projectId   String
+  documentId  String
+  action      PEPDocumentAction
+  performedBy String
+  performedAt DateTime          @default(now())
+  oldFileName String?
+  newFileName String?
+  remarks     String?
+  fileSize    Int?
+  fileType    String?
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User              @relation("PEPDocumentHistoryUser", fields: [performedBy], references: [id])
+
+  @@index([projectId])
+  @@index([documentId])
+  @@index([performedBy])
+  @@index([action])
+  @@index([performedAt])
+  @@index([projectId, documentId])
 }
 
 model ReimbursementForm {
-  id                     String                      @id @default(cuid())
-  referenceNumber        String                      @unique
-  requestType            String                      @default("REIMBURSEMENT")
-  version                Int                         @default(1)
-  dateOfSubmission       DateTime                    @default(now())
+  id                     String    @id @default(cuid())
+  referenceNumber        String    @unique
+  requestType            String    @default("REIMBURSEMENT")
+  version                Int       @default(1)
+  dateOfSubmission       DateTime  @default(now())
   projectName            String?
   brCoverageDateFrom     DateTime?
   brCoverageDateTo       DateTime?
-  totalBudgetRequested   Decimal                     @default(0) @db.Decimal(15, 2)
+  totalBudgetRequested   Decimal   @default(0) @db.Decimal(15, 2)
   remarksType            String?
   requestorRemarks       String?
-  status                 String                      @default("DRAFT")
-  currentStage           Int                         @default(1)
+  status                 String    @default("DRAFT")
+  currentStage           Int       @default(1)
   workflowId             String?
   createdBy              String
-  createdAt              DateTime                    @default(now())
-  updatedAt              DateTime                    @updatedAt
-  accountsManager        String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  accountsManager        String? // DEPRECATED: Use accountsManagerId instead
   budgetCode             String?
-  budgetItemParticular   String                      @default("Reimbursement")
+  budgetItemParticular   String    @default("Reimbursement")
   budgetNotesDescription String?
-  budgetQuantity         Decimal                     @default(0) @db.Decimal(10, 2)
-  budgetTotal            Decimal                     @default(0) @db.Decimal(15, 2)
-  budgetUnit             String                      @default("LOT")
-  budgetUnitPrice        Decimal                     @default(0) @db.Decimal(15, 2)
+  budgetQuantity         Decimal   @default(0) @db.Decimal(10, 2)
+  budgetTotal            Decimal   @default(0) @db.Decimal(15, 2)
+  budgetUnit             String    @default("LOT")
+  budgetUnitPrice        Decimal   @default(0) @db.Decimal(15, 2)
   cepdNumber             String?
   projectId              String?
-  projectManager         String?
-  requestorName          String                      @default("")
+  projectManager         String? // DEPRECATED: Use projectManagerId instead
+  requestorName          String    @default("") // DEPRECATED: Use creator.name instead
   dateOfRelease          DateTime?
-  budgetDays             Decimal                     @default(0) @db.Decimal(10, 2)
-  budgetVenue            Decimal                     @default(0) @db.Decimal(10, 2)
-  creator                User                        @relation(fields: [createdBy], references: [id])
-  project                Project?                    @relation(fields: [projectId], references: [id])
-  workflow               WorkflowDefinition?         @relation(fields: [workflowId], references: [id])
-  receiptEntries         ReimbursementReceiptEntry[]
+  dateNeeded             DateTime?
+  budgetDays             Decimal   @default(0) @db.Decimal(10, 2)
+  budgetVenue            Decimal   @default(0) @db.Decimal(10, 2)
+
+  // NEW FOREIGN KEY FIELDS (Priority 1 Refactoring)
+  accountsManagerId String?
+  projectManagerId  String?
+  deletedAt         DateTime?
+
+  // SAP Integration fields
+  sapDocNum          Int?
+  sapDocEntry        Int?
+  sapIntegrationDate DateTime?
+
+  creator        User                        @relation(fields: [createdBy], references: [id])
+  project        Project?                    @relation(fields: [projectId], references: [id])
+  workflow       WorkflowDefinition?         @relation(fields: [workflowId], references: [id])
+  receiptEntries ReimbursementReceiptEntry[]
+
+  // NEW RELATIONS (Priority 1 Refactoring)
+  accountsManagerUser User? @relation("ReimbursementAccountsManager", fields: [accountsManagerId], references: [id])
+  projectManagerUser  User? @relation("ReimbursementProjectManager", fields: [projectManagerId], references: [id])
 
   @@index([referenceNumber])
   @@index([createdBy])
@@ -1586,6 +1909,10 @@ model ReimbursementForm {
   @@index([workflowId])
   @@index([projectId])
   @@index([status, createdAt])
+  @@index([accountsManagerId])
+  @@index([projectManagerId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
 }
 
 model ReimbursementReceiptEntry {
@@ -1609,42 +1936,64 @@ model ReimbursementReceiptEntry {
 }
 
 model CashAdvanceForm {
-  id                     String                 @id @default(cuid())
-  referenceNumber        String                 @unique
-  requestType            String                 @default("CASH_ADVANCE")
-  cepdNumber             String                 @default("")
-  dateOfSubmission       DateTime               @default(now())
+  id                     String    @id @default(cuid())
+  referenceNumber        String    @unique
+  requestType            String    @default("CASH_ADVANCE")
+  cepdNumber             String    @default("")
+  dateOfSubmission       DateTime  @default(now())
   projectId              String?
-  projectName            String?
+  projectName            String? // DEPRECATED: Use project.projectName instead
   budgetCode             String?
-  accountsManager        String?
-  projectManager         String?
+  accountsManager        String? // DEPRECATED: Use accountsManagerId instead
+  projectManager         String? // DEPRECATED: Use projectManagerId instead
   brCoverageDateFrom     DateTime?
   brCoverageDateTo       DateTime?
-  brRequestor            String                 @default("")
-  budgetItemParticular   String                 @default("Cash Advance")
+  brRequestor            String    @default("") // DEPRECATED: Use creator.name instead
+  budgetItemParticular   String    @default("Cash Advance")
   budgetNotesDescription String?
-  budgetQuantity         Decimal                @default(0) @db.Decimal(10, 2)
-  budgetUnit             String                 @default("LOT")
-  budgetUnitPrice        Decimal                @default(0) @db.Decimal(15, 2)
-  budgetTotal            Decimal                @default(0) @db.Decimal(15, 2)
-  totalBudgetRequested   Decimal                @default(0) @db.Decimal(15, 2)
+  budgetQuantity         Decimal   @default(0) @db.Decimal(10, 2)
+  budgetUnit             String    @default("LOT")
+  budgetUnitPrice        Decimal   @default(0) @db.Decimal(15, 2)
+  budgetTotal            Decimal   @default(0) @db.Decimal(15, 2)
+  totalBudgetRequested   Decimal   @default(0) @db.Decimal(15, 2)
   remarksType            String?
   requestorRemarks       String?
-  status                 String                 @default("DRAFT")
-  currentStage           Int                    @default(1)
+  status                 String    @default("DRAFT")
+  currentStage           Int       @default(1)
   workflowId             String?
   createdBy              String
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
   dateOfRelease          DateTime?
-  budgetDays             Decimal                @default(0) @db.Decimal(10, 2)
-  budgetVenue            Decimal                @default(0) @db.Decimal(10, 2)
-  liquidationReceipts    CALiquidationReceipt[]
-  cashAdvanceEntries     CashAdvanceEntry[]
-  creator                User                   @relation(fields: [createdBy], references: [id])
-  project                Project?               @relation(fields: [projectId], references: [id])
-  workflow               WorkflowDefinition?    @relation(fields: [workflowId], references: [id])
+  dateNeeded             DateTime?
+  liquidationDueDate     DateTime?
+  budgetDays             Decimal   @default(0) @db.Decimal(10, 2)
+  budgetVenue            Decimal   @default(0) @db.Decimal(10, 2)
+
+  // NEW FOREIGN KEY FIELDS (Priority 1 Refactoring)
+  accountsManagerId String?
+  projectManagerId  String?
+  deletedAt         DateTime?
+
+  // SAP Integration fields (Stage 3 - Payment Draft)
+  sapDocNum          Int?
+  sapDocEntry        Int?
+  sapIntegrationDate DateTime?
+
+  // SAP Integration fields (Stage 9 - Purchase Order for Liquidation)
+  sapPurchaseOrderDocNum          Int?
+  sapPurchaseOrderDocEntry        Int?
+  sapPurchaseOrderIntegrationDate DateTime?
+
+  liquidationReceipts CALiquidationReceipt[]
+  cashAdvanceEntries  CashAdvanceEntry[]
+  creator             User                   @relation(fields: [createdBy], references: [id])
+  project             Project?               @relation(fields: [projectId], references: [id])
+  workflow            WorkflowDefinition?    @relation(fields: [workflowId], references: [id])
+
+  // NEW RELATIONS (Priority 1 Refactoring)
+  accountsManagerUser User? @relation("CashAdvanceAccountsManager", fields: [accountsManagerId], references: [id])
+  projectManagerUser  User? @relation("CashAdvanceProjectManager", fields: [projectManagerId], references: [id])
 
   @@index([referenceNumber])
   @@index([createdBy])
@@ -1652,6 +2001,10 @@ model CashAdvanceForm {
   @@index([workflowId])
   @@index([projectId])
   @@index([status, createdAt])
+  @@index([accountsManagerId])
+  @@index([projectManagerId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
 }
 
 model CashAdvanceEntry {
@@ -1689,43 +2042,43 @@ model CALiquidationReceipt {
 }
 
 model RTPForm {
-  id                               String                 @id @default(cuid())
-  referenceNumber                  String                 @unique
-  dateOfRtp                        DateTime               @default(now())
-  selectedVendorId                 String
-  registeredVendorName             String
+  id                               String        @id @default(cuid())
+  referenceNumber                  String        @unique
+  dateOfRtp                        DateTime      @default(now())
+  selectedVendorId                 String // DEPRECATED: No relation - use vendorId instead
+  registeredVendorName             String // Keep for denormalization performance
   registeredTradeName              String?
   registeredVendorTin              String
   registeredVendorAddress          Json
   requestorProponent               String
   group                            String
   department                       String
-  dateOfEngagementFrom             DateTime
-  dateOfEngagementTo               DateTime
+  dateOfEngagementFrom             DateTime?
+  dateOfEngagementTo               DateTime?
   venueOfEngagement                String?
-  invoiceQuotationNumber           String
-  descriptionOfGoodsServices       String
-  termOfPayment                    String
-  modeOfPayment                    String
-  requestedDateOfRelease           DateTime
+  invoiceQuotationNumber           String?
+  descriptionOfGoodsServices       String?
+  termOfPayment                    String?
+  modeOfPayment                    String?
+  requestedDateOfRelease           DateTime?
   cashDepositNote                  String?
-  vatRegistration                  String
-  proofOfLiquidation               String
-  billingAmount                    Decimal                @db.Decimal(15, 2)
-  currentStage                     Int                    @default(1)
+  vatRegistration                  String?
+  proofOfLiquidation               String?
+  billingAmount                    Decimal       @db.Decimal(15, 2)
+  currentStage                     Int           @default(1)
   workflowId                       String?
   createdBy                        String
-  createdAt                        DateTime               @default(now())
-  updatedAt                        DateTime               @updatedAt
+  createdAt                        DateTime      @default(now())
+  updatedAt                        DateTime      @updatedAt
   requestorRemarks                 String?
   exemptionReason                  String?
-  isCleared                        Boolean?               @default(false)
+  isCleared                        Boolean?      @default(false)
   liquidationDueDate               DateTime?
-  treasuryProcessorId              String?
+  treasuryProcessorId              String? // DEPRECATED: Use processorId instead
   billingCertificateGeneratedAt    DateTime?
   billingCertificateGeneratedBy    String?
-  billingCertificateNumber         String?                @unique
-  billingCertificateBillingAmount  Decimal?               @db.Decimal(15, 2)
+  billingCertificateNumber         String?       @unique
+  billingCertificateBillingAmount  Decimal?      @db.Decimal(15, 2)
   billingCertificateEngagementFrom DateTime?
   billingCertificateEngagementTo   DateTime?
   billingCertificateInvoiceNumber  String?
@@ -1734,30 +2087,47 @@ model RTPForm {
   billingCertificateVendorName     String?
   invoiceAttachments               Json?
   rejectionReason                  String?
-  status                           RTPFormStatus          @default(DRAFT)
+  status                           RTPFormStatus @default(DRAFT)
   exemptionReviewedAt              DateTime?
   exemptionReviewedBy              String?
   invoiceExemptionReason           String?
-  noInvoiceExemption               Boolean                @default(false)
-  amountType                       String                 @default("INCLUSIVE")
-  isManuallyEdited                 Boolean                @default(false)
-  manualAddVatAmount               Decimal?               @db.Decimal(15, 2)
-  manualAmountDue                  Decimal?               @db.Decimal(15, 2)
-  manualGrossAmount                Decimal?               @db.Decimal(15, 2)
-  manualTotal                      Decimal?               @db.Decimal(15, 2)
-  manualTotalAmountDue             Decimal?               @db.Decimal(15, 2)
-  manualTotalDue                   Decimal?               @db.Decimal(15, 2)
-  manualTotalSales                 Decimal?               @db.Decimal(15, 2)
-  manualVatAmount                  Decimal?               @db.Decimal(15, 2)
-  manualVatableSales               Decimal?               @db.Decimal(15, 2)
-  manualWithholdingTax             Decimal?               @db.Decimal(15, 2)
-  manualVatExemptSales             Decimal?               @db.Decimal(15, 2)
-  manualVatZeroRatedSales          Decimal?               @db.Decimal(15, 2)
-  ewtAllocations                   RTPEWTAllocation[]
-  fieldChangeLogs                  RTPFieldChangeLog[]
-  creator                          User                   @relation(fields: [createdBy], references: [id])
-  workflow                         WorkflowDefinition?    @relation(fields: [workflowId], references: [id])
-  projectAllocations               RTPProjectAllocation[]
+  noInvoiceExemption               Boolean       @default(false)
+  amountType                       String        @default("INCLUSIVE")
+  isManuallyEdited                 Boolean       @default(false)
+  manualAddVatAmount               Decimal?      @db.Decimal(15, 2)
+  manualAmountDue                  Decimal?      @db.Decimal(15, 2)
+  manualGrossAmount                Decimal?      @db.Decimal(15, 2)
+  manualTotal                      Decimal?      @db.Decimal(15, 2)
+  manualTotalAmountDue             Decimal?      @db.Decimal(15, 2)
+  manualTotalDue                   Decimal?      @db.Decimal(15, 2)
+  manualTotalSales                 Decimal?      @db.Decimal(15, 2)
+  manualVatAmount                  Decimal?      @db.Decimal(15, 2)
+  manualVatableSales               Decimal?      @db.Decimal(15, 2)
+  manualWithholdingTax             Decimal?      @db.Decimal(15, 2)
+  manualVatExemptSales             Decimal?      @db.Decimal(15, 2)
+  manualVatZeroRatedSales          Decimal?      @db.Decimal(15, 2)
+
+  // SAP INTEGRATION FIELDS
+  sapDocNum          Int? // SAP Payment Draft Document Number
+  sapDocEntry        Int? // SAP Payment Draft Document Entry
+  sapIntegrationDate DateTime? // When the form was integrated with SAP
+
+  // NEW FOREIGN KEY FIELDS (Priority 1 Refactoring)
+  vendorId         String?
+  approvedVendorId String? // New FK for ApprovedVendors
+  processorId      String?
+  deletedAt        DateTime?
+
+  ewtAllocations     RTPEWTAllocation[]
+  fieldChangeLogs    RTPFieldChangeLog[]
+  creator            User                   @relation(fields: [createdBy], references: [id])
+  workflow           WorkflowDefinition?    @relation(fields: [workflowId], references: [id])
+  projectAllocations RTPProjectAllocation[]
+
+  // NEW RELATIONS (Priority 1 Refactoring)
+  vendor         Vendor?          @relation(fields: [vendorId], references: [id])
+  approvedVendor ApprovedVendors? @relation(fields: [approvedVendorId], references: [id])
+  processorUser  User?            @relation("RTPProcessor", fields: [processorId], references: [id])
 
   @@index([status])
   @@index([createdBy])
@@ -1765,6 +2135,11 @@ model RTPForm {
   @@index([workflowId])
   @@index([referenceNumber])
   @@index([status, createdAt])
+  @@index([vendorId])
+  @@index([approvedVendorId])
+  @@index([processorId])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
 }
 
 model RTPProjectAllocation {
@@ -1849,6 +2224,7 @@ model TodaysNews {
   startDate       DateTime
   time            String?
   venue           String?
+  deletedAt       DateTime?
   creator         User                @relation(fields: [createdBy], references: [id])
   workflow        WorkflowDefinition? @relation(fields: [workflowId], references: [id])
 
@@ -1861,6 +2237,8 @@ model TodaysNews {
   @@index([workflowId])
   @@index([status, publishDate])
   @@index([referenceNumber])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
 }
 
 model RTPEWTAllocation {
@@ -2035,6 +2413,13 @@ enum SupplyCategory {
   STORAGE_BOXES
   SAFETY_EQUIPMENT
   MAINTENANCE_TOOLS
+  TAPES_AND_ADHESIVES
+  WRITING_SUPPLIES
+  PAPER_PRODUCTS
+  FILING_AND_ORGANIZATION_SUPPLIES
+  ELECTRONIC_SUPPLIES
+  OFFICE_TOOLS_AND_ACCESSORIES
+  PACKAGING_SUPPLIES
 }
 
 enum SupplyItemStatus {
@@ -2109,6 +2494,12 @@ enum GenOpsPEPStatus {
   REJECTED
   ARCHIVED
   CANCELLED
+}
+
+enum PEPDocumentAction {
+  UPLOADED
+  REPLACED
+  DELETED
 }
 
 enum RTPFormStatus {

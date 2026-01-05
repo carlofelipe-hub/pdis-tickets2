@@ -7,14 +7,14 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import { CommentInput } from "@/components/comment-input"
+import { FilePreview } from "@/components/ui/file-preview"
 import { toast } from "sonner"
 import {
   ArrowLeft,
   Loader2,
-  Send,
   Bug,
   Lightbulb,
   TicketIcon,
@@ -78,6 +78,14 @@ interface Ticket {
       lastName: string | null
       image: string | null
     }
+    attachments: Array<{
+      id: string
+      fileName: string
+      fileUrl: string
+      fileSize: number
+      fileType: string
+      createdAt: string
+    }>
   }>
   statusHistory: Array<{
     id: string
@@ -149,7 +157,6 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
   const { data: session } = useSession()
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [comment, setComment] = useState("")
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
 
@@ -173,15 +180,15 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
     fetchTicket()
   }, [id, router])
 
-  const handleSubmitComment = async () => {
-    if (!comment.trim()) return
+  const handleSubmitComment = async (content: string, attachmentIds: string[]) => {
+    if (!content.trim() && attachmentIds.length === 0) return
 
     setIsSubmittingComment(true)
     try {
       const response = await fetch(`/api/tickets/${id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: comment }),
+        body: JSON.stringify({ content, attachmentIds }),
       })
 
       if (response.ok) {
@@ -190,7 +197,6 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
           ...prev,
           comments: [...prev.comments, newComment],
         } : null)
-        setComment("")
         toast.success("Comment added")
       } else {
         throw new Error("Failed to add comment")
@@ -353,7 +359,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
                           {getUserInitials(comment.user)}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
+                      <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-foreground">
                             {getUserDisplayName(comment.user)}
@@ -362,9 +368,16 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
                             {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                           </span>
                         </div>
-                        <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap">
-                          {comment.content}
-                        </p>
+                        {comment.content && (
+                          <p className="text-sm text-foreground/80 whitespace-pre-wrap">
+                            {comment.content}
+                          </p>
+                        )}
+                        {comment.attachments && comment.attachments.length > 0 && (
+                          <div className="mt-2">
+                            <FilePreview files={comment.attachments} readOnly />
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -373,29 +386,11 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
 
               {/* Add Comment */}
               <Separator className="bg-border" />
-              <div className="space-y-3">
-                <Textarea
-                  placeholder="Add a comment..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground resize-none"
-                  rows={3}
-                />
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handleSubmitComment}
-                    disabled={!comment.trim() || isSubmittingComment}
-                    className="bg-orange-500 hover:bg-orange-600 text-white"
-                  >
-                    {isSubmittingComment ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="mr-2 h-4 w-4" />
-                    )}
-                    Send
-                  </Button>
-                </div>
-              </div>
+              <CommentInput
+                ticketId={id}
+                onSubmit={handleSubmitComment}
+                isSubmitting={isSubmittingComment}
+              />
             </CardContent>
           </Card>
         </div>

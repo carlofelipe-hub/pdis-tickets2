@@ -2616,31 +2616,35 @@ model Ticket {
 }
 
 model TicketAttachment {
-  id           String   @id @default(cuid())
+  id           String         @id @default(cuid())
   ticketId     String
+  commentId    String?
   fileName     String
   fileUrl      String
   fileSize     Int?
   fileType     String?
   uploadedById String
-  createdAt    DateTime @default(now())
-  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime       @default(now())
+  ticket       Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  comment      TicketComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy   User           @relation(fields: [uploadedById], references: [id])
 
   @@index([ticketId])
+  @@index([commentId])
   @@index([uploadedById])
 }
 
 model TicketComment {
-  id         String   @id @default(cuid())
-  ticketId   String
-  userId     String
-  content    String
-  isInternal Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id])
+  id          String             @id @default(cuid())
+  ticketId    String
+  userId      String
+  content     String
+  isInternal  Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  ticket      Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user        User               @relation(fields: [userId], references: [id])
+  attachments TicketAttachment[]
 
   @@index([ticketId])
   @@index([userId])

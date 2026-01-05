@@ -7,6 +7,7 @@ import { z } from "zod"
 const createCommentSchema = z.object({
   content: z.string().min(1).max(2000),
   isInternal: z.boolean().optional(),
+  attachmentIds: z.array(z.string()).optional(),
 })
 
 // POST /api/tickets/[id]/comments - Add a comment
@@ -58,30 +59,83 @@ export async function POST(
 
     const isInternal = validatedData.isInternal && isInternalStaff
 
-    const comment = await prisma.ticketComment.create({
-      data: {
-        ticketId: id,
-        userId: session.user.id,
-        content: validatedData.content,
-        isInternal,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true,
-            image: true,
+    // Use transaction to create comment and link attachments
+    const comment = await prisma.$transaction(async (tx) => {
+      // Create the comment
+      const newComment = await tx.ticketComment.create({
+        data: {
+          ticketId: id,
+          userId: session.user.id,
+          content: validatedData.content,
+          isInternal,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              image: true,
+            },
           },
         },
-      },
+      })
+
+      // Link attachments to comment if provided
+      if (validatedData.attachmentIds && validatedData.attachmentIds.length > 0) {
+        await tx.ticketAttachment.updateMany({
+          where: {
+            id: { in: validatedData.attachmentIds },
+            ticketId: id,
+            uploadedById: session.user.id,
+            commentId: null, // Only update unlinked attachments
+          },
+          data: {
+            commentId: newComment.id,
+          },
+        })
+      }
+
+      // Fetch comment with attachments
+      return tx.ticketComment.findUnique({
+        where: { id: newComment.id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              image: true,
+            },
+          },
+          attachments: {
+            select: {
+              id: true,
+              fileName: true,
+              fileUrl: true,
+              fileSize: true,
+              fileType: true,
+              createdAt: true,
+            },
+          },
+        },
+      })
     })
+
+    if (!comment) {
+      throw new Error("Failed to create comment")
+    }
 
     return NextResponse.json({
       ...comment,
       createdAt: comment.createdAt.toISOString(),
       updatedAt: comment.updatedAt.toISOString(),
+      attachments: comment.attachments.map((a) => ({
+        ...a,
+        createdAt: a.createdAt.toISOString(),
+      })),
     })
   } catch (error) {
     console.error("Error creating comment:", error)

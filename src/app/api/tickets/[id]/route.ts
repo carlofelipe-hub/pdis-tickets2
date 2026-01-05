@@ -66,6 +66,16 @@ export async function GET(
                 image: true,
               },
             },
+            attachments: {
+              select: {
+                id: true,
+                fileName: true,
+                fileUrl: true,
+                fileSize: true,
+                fileType: true,
+                createdAt: true,
+              },
+            },
           },
         },
         statusHistory: {
@@ -113,6 +123,10 @@ export async function GET(
         ...c,
         createdAt: c.createdAt.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
+        attachments: c.attachments.map((a) => ({
+          ...a,
+          createdAt: a.createdAt.toISOString(),
+        })),
       })),
       statusHistory: ticket.statusHistory.map((h) => ({
         ...h,
@@ -196,6 +210,16 @@ export async function PATCH(
                   firstName: true,
                   lastName: true,
                   image: true,
+                },
+              },
+              attachments: {
+                select: {
+                  id: true,
+                  fileName: true,
+                  fileUrl: true,
+                  fileSize: true,
+                  fileType: true,
+                  createdAt: true,
                 },
               },
             },

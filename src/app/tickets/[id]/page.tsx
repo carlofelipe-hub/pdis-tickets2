@@ -11,15 +11,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
-import { 
-  ArrowLeft, 
-  Loader2, 
+import {
+  ArrowLeft,
+  Loader2,
   Send,
   Bug,
   Lightbulb,
-  Wrench,
-  HelpCircle,
-  CheckCircle2,
   TicketIcon,
   Clock,
   User,
@@ -117,9 +114,6 @@ const priorityColors: Record<string, string> = {
 const categoryIcons: Record<string, React.ReactNode> = {
   BUG: <Bug className="h-5 w-5 text-red-500" />,
   FEATURE_REQUEST: <Lightbulb className="h-5 w-5 text-yellow-500" />,
-  ENHANCEMENT: <Wrench className="h-5 w-5 text-blue-500" />,
-  SUPPORT: <HelpCircle className="h-5 w-5 text-green-500" />,
-  TASK: <CheckCircle2 className="h-5 w-5 text-purple-500" />,
   OTHER: <TicketIcon className="h-5 w-5 text-muted-foreground" />,
 }
 

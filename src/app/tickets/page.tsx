@@ -21,19 +21,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { 
-  Plus, 
-  Search, 
+import {
+  Plus,
+  Search,
   Filter,
   TicketIcon,
   ChevronLeft,
   ChevronRight,
   Loader2,
   Bug,
-  Lightbulb,
-  Wrench,
-  HelpCircle,
-  CheckCircle2
+  Lightbulb
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
@@ -69,9 +66,6 @@ const priorityColors: Record<string, string> = {
 const categoryIcons: Record<string, React.ReactNode> = {
   BUG: <Bug className="h-4 w-4 text-red-400" />,
   FEATURE_REQUEST: <Lightbulb className="h-4 w-4 text-yellow-400" />,
-  ENHANCEMENT: <Wrench className="h-4 w-4 text-blue-400" />,
-  SUPPORT: <HelpCircle className="h-4 w-4 text-green-400" />,
-  TASK: <CheckCircle2 className="h-4 w-4 text-purple-400" />,
   OTHER: <TicketIcon className="h-4 w-4 text-slate-400" />,
 }
 
@@ -203,11 +197,8 @@ export default function TicketsPage() {
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="BUG">Bug</SelectItem>
-                <SelectItem value="FEATURE_REQUEST">Feature Request</SelectItem>
-                <SelectItem value="ENHANCEMENT">Enhancement</SelectItem>
-                <SelectItem value="SUPPORT">Support</SelectItem>
-                <SelectItem value="TASK">Task</SelectItem>
+                <SelectItem value="BUG">Bug Report</SelectItem>
+                <SelectItem value="FEATURE_REQUEST">Feature Enhancement</SelectItem>
                 <SelectItem value="OTHER">Other</SelectItem>
               </SelectContent>
             </Select>

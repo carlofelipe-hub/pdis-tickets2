@@ -19,13 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { Loader2, ArrowLeft, Bug, Lightbulb, Wrench, HelpCircle, CheckCircle2, TicketIcon, Upload, X, FileIcon } from "lucide-react"
+import { Loader2, ArrowLeft, Bug, Lightbulb, TicketIcon, Upload, X, FileIcon } from "lucide-react"
 import Link from "next/link"
 
 const ticketSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200, "Title must be less than 200 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
-  category: z.enum(["BUG", "FEATURE_REQUEST", "ENHANCEMENT", "SUPPORT", "TASK", "OTHER"]),
+  category: z.enum(["BUG", "FEATURE_REQUEST", "OTHER"]),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
   stepsToReproduce: z.string().optional(),
   contactEmail: z.string().email("Please enter a valid email"),
@@ -36,7 +36,7 @@ type TicketFormData = z.infer<typeof ticketSchema>
 
 const categoryOptions = [
   { value: "BUG", label: "Bug Report", icon: Bug, color: "text-red-400", description: "Something isn't working correctly" },
-  { value: "SUPPORT", label: "Support", icon: HelpCircle, color: "text-green-400", description: "Get help with an issue" },
+  { value: "FEATURE_REQUEST", label: "Feature Enhancement", icon: Lightbulb, color: "text-yellow-400", description: "Request new functionality or improvements" },
   { value: "OTHER", label: "Other", icon: TicketIcon, color: "text-slate-400", description: "Doesn't fit other categories" },
 ]
 

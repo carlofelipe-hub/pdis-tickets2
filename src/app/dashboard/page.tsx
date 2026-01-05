@@ -6,17 +6,15 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
-  TicketIcon, 
-  Plus, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  TicketIcon,
+  Plus,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
   ArrowRight,
   Bug,
-  Lightbulb,
-  Wrench,
-  HelpCircle
+  Lightbulb
 } from "lucide-react"
 
 interface TicketStats {
@@ -57,9 +55,6 @@ const priorityColors: Record<string, string> = {
 const categoryIcons: Record<string, React.ReactNode> = {
   BUG: <Bug className="h-4 w-4" />,
   FEATURE_REQUEST: <Lightbulb className="h-4 w-4" />,
-  ENHANCEMENT: <Wrench className="h-4 w-4" />,
-  SUPPORT: <HelpCircle className="h-4 w-4" />,
-  TASK: <CheckCircle2 className="h-4 w-4" />,
   OTHER: <TicketIcon className="h-4 w-4" />,
 }
 
@@ -286,25 +281,19 @@ export default function DashboardPage() {
             <Link href="/tickets/new?category=BUG">
               <Button variant="outline" className="w-full justify-start bg-muted/50 border-border text-foreground hover:bg-muted">
                 <Bug className="mr-3 h-4 w-4 text-red-500" />
-                Report a Bug
+                Bug Report
               </Button>
             </Link>
             <Link href="/tickets/new?category=FEATURE_REQUEST">
               <Button variant="outline" className="w-full justify-start bg-muted/50 border-border text-foreground hover:bg-muted">
                 <Lightbulb className="mr-3 h-4 w-4 text-yellow-500" />
-                Request a Feature
+                Feature Enhancement
               </Button>
             </Link>
-            <Link href="/tickets/new?category=ENHANCEMENT">
+            <Link href="/tickets/new?category=OTHER">
               <Button variant="outline" className="w-full justify-start bg-muted/50 border-border text-foreground hover:bg-muted">
-                <Wrench className="mr-3 h-4 w-4 text-blue-500" />
-                Suggest Enhancement
-              </Button>
-            </Link>
-            <Link href="/tickets/new?category=SUPPORT">
-              <Button variant="outline" className="w-full justify-start bg-muted/50 border-border text-foreground hover:bg-muted">
-                <HelpCircle className="mr-3 h-4 w-4 text-green-500" />
-                Get Support
+                <TicketIcon className="mr-3 h-4 w-4 text-slate-500" />
+                Other
               </Button>
             </Link>
           </CardContent>

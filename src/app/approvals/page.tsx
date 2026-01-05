@@ -25,16 +25,14 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { toast } from "sonner"
-import { 
-  CheckCircle2, 
-  XCircle, 
-  Eye, 
+import {
+  CheckCircle2,
+  XCircle,
+  Eye,
   Loader2,
   TicketIcon,
   Bug,
   Lightbulb,
-  Wrench,
-  HelpCircle,
   AlertTriangle
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
@@ -66,9 +64,6 @@ const priorityColors: Record<string, string> = {
 const categoryIcons: Record<string, React.ReactNode> = {
   BUG: <Bug className="h-4 w-4 text-red-500" />,
   FEATURE_REQUEST: <Lightbulb className="h-4 w-4 text-yellow-500" />,
-  ENHANCEMENT: <Wrench className="h-4 w-4 text-blue-500" />,
-  SUPPORT: <HelpCircle className="h-4 w-4 text-green-500" />,
-  TASK: <CheckCircle2 className="h-4 w-4 text-purple-500" />,
   OTHER: <TicketIcon className="h-4 w-4 text-muted-foreground" />,
 }
 

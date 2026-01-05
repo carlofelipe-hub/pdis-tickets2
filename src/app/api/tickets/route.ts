@@ -10,7 +10,7 @@ import { canCreateTickets, getAccessDenialReason } from "@/lib/access-control"
 const createTicketSchema = z.object({
   title: z.string().min(5).max(200),
   description: z.string().min(20),
-  category: z.enum(["BUG", "FEATURE_REQUEST", "ENHANCEMENT", "SUPPORT", "TASK", "OTHER"]),
+  category: z.enum(["BUG", "FEATURE_REQUEST", "OTHER"]),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
   stepsToReproduce: z.string().optional(),
   contactEmail: z.string().email(),

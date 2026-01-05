@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { TicketCategory, TicketPriority, TicketStatus, Prisma } from "@prisma/client"
 import { buildUserTicketsWhereClause } from "@/lib/ticket-filters"
-import { canCreateTickets, getAccessDenialReason } from "@/lib/access-control"
+import { canCreateTickets, getAccessDenialReason, shouldBypassApproval } from "@/lib/access-control"
 
 const createTicketSchema = z.object({
   title: z.string().min(5).max(200),
@@ -154,6 +154,10 @@ export async function POST(request: NextRequest) {
 
     const ticketNumber = await generateTicketNumber()
 
+    // Check if user should bypass approval process
+    const bypassApproval = shouldBypassApproval(session.user.email)
+    const initialStatus = bypassApproval ? "SUBMITTED" : "FOR_PD_APPROVAL"
+
     const ticket = await prisma.ticket.create({
       data: {
         ticketNumber,
@@ -165,7 +169,7 @@ export async function POST(request: NextRequest) {
         contactEmail: validatedData.contactEmail,
         contactPhone: validatedData.contactPhone || null,
         submitterId: session.user.id,
-        status: "FOR_PD_APPROVAL",
+        status: initialStatus,
       },
     })
 
@@ -174,9 +178,11 @@ export async function POST(request: NextRequest) {
       data: {
         ticketId: ticket.id,
         fromStatus: null,
-        toStatus: "FOR_PD_APPROVAL",
+        toStatus: initialStatus,
         changedById: session.user.id,
-        reason: "Ticket created",
+        reason: bypassApproval
+          ? "Ticket created (approval bypassed)"
+          : "Ticket created",
       },
     })
 

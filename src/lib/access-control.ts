@@ -12,8 +12,8 @@ const TICKET_APPROVERS = [
   'julie.mendoza@projectduo.com.ph',
 ]
 
-// Hardcoded list of users who can create tickets (15 users)
-// Note: The 3 approvers above can also create tickets (vida.gerado and julie.mendoza are in both lists)
+// Hardcoded list of users who can create tickets (16 users)
+// Note: All 3 approvers can also create tickets and bypass approval
 const ALLOWED_TICKET_CREATORS = [
   'torie.gequillana@projectduo.com.ph',  // Torie Gequillana
   'camila.sosito@projectduo.com.ph',     // Camila Sosito
@@ -30,6 +30,7 @@ const ALLOWED_TICKET_CREATORS = [
   'nancy.marcelo@projectduo.com.ph',     // Nancy Marcelo
   'elvin.olano@projectduo.com.ph',       // Elvin Olano
   'julie.mendoza@projectduo.com.ph',     // Julie Mendoza (also an approver)
+  'von.mauleon@projectduo.com.ph',       // Von Mauleon (also an approver)
 ]
 
 /**
@@ -50,6 +51,18 @@ export function isTicketApprover(email: string | null | undefined): boolean {
 export function canCreateTickets(email: string | null | undefined): boolean {
   if (!email) return false
   return ALLOWED_TICKET_CREATORS.includes(email.toLowerCase())
+}
+
+/**
+ * Check if a user should bypass the approval process
+ * These users' tickets go directly to SUBMITTED status instead of FOR_PD_APPROVAL
+ * @param email - User's email address
+ * @returns true if user should bypass approval, false otherwise
+ */
+export function shouldBypassApproval(email: string | null | undefined): boolean {
+  if (!email) return false
+  // The 3 ticket approvers bypass the approval process for their own tickets
+  return TICKET_APPROVERS.includes(email.toLowerCase())
 }
 
 /**

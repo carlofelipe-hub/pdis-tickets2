@@ -10,6 +10,7 @@ const TICKET_APPROVERS = [
   'von.mauleon@projectduo.com.ph',
   'vida.gerado@projectduo.com.ph',
   'julie.mendoza@projectduo.com.ph',
+  'av.mauleon@gmail.com'
 ]
 
 // Hardcoded list of users who can create tickets (16 users)
@@ -31,6 +32,7 @@ const ALLOWED_TICKET_CREATORS = [
   'elvin.olano@projectduo.com.ph',       // Elvin Olano
   'julie.mendoza@projectduo.com.ph',     // Julie Mendoza (also an approver)
   'von.mauleon@projectduo.com.ph',       // Von Mauleon (also an approver)
+  'av.mauleon@gmail.com'                 // Av Mauleon (also an approver)
 ]
 
 /**

@@ -41,7 +41,10 @@ import {
   CheckCircle2,
   UserPlus,
   Play,
-  Users
+  Users,
+  ArrowRight,
+  CheckCircle,
+  Rocket
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
@@ -145,6 +148,7 @@ export default function PMPage() {
   const [selectedQa, setSelectedQa] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState("submitted")
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null)
 
   const isProjectManager = session?.user?.ticketRole === "PROJECT_MANAGER"
 
@@ -239,6 +243,60 @@ export default function PMPage() {
     setSelectedTicket(ticket)
     setSelectedDeveloper(ticket.assignedDeveloper?.id || "")
     setSelectedQa(ticket.assignedQa?.id || "")
+  }
+
+  const handleStatusUpdate = async (ticketId: string, newStatus: string) => {
+    setIsUpdatingStatus(ticketId)
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newStatus }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+
+        // Update ticket in list
+        setTickets((prev) =>
+          prev.map((t) => {
+            if (t.id === ticketId) {
+              return {
+                ...t,
+                status: result.ticket.status,
+              }
+            }
+            return t
+          })
+        )
+
+        toast.success(getStatusUpdateMessage(newStatus))
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to update status")
+      }
+    } catch (error) {
+      toast.error("Failed to update ticket status", {
+        description: error instanceof Error ? error.message : "Please try again",
+      })
+    } finally {
+      setIsUpdatingStatus(null)
+    }
+  }
+
+  const getStatusUpdateMessage = (status: string): string => {
+    switch (status) {
+      case "QA_TESTING":
+        return "Ticket moved to QA Testing"
+      case "PD_TESTING":
+        return "Ticket moved to PD Testing"
+      case "FOR_DEPLOYMENT":
+        return "Ticket approved for deployment"
+      case "DEPLOYED":
+        return "Ticket marked as deployed"
+      default:
+        return "Ticket status updated"
+    }
   }
 
   const filteredTickets = tickets.filter((t) => {
@@ -483,6 +541,75 @@ export default function PMPage() {
                               >
                                 <UserPlus className="h-4 w-4" />
                               </Button>
+
+                              {/* Status Update Buttons */}
+                              {activeTab === "in-progress" && ticket.status === "DEV_IN_PROGRESS" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-cyan-500 hover:text-cyan-400 hover:bg-cyan-500/10"
+                                  onClick={() => handleStatusUpdate(ticket.id, "QA_TESTING")}
+                                  disabled={!ticket.assignedQa || isUpdatingStatus === ticket.id}
+                                  title={!ticket.assignedQa ? "QA must be assigned first" : "Move to QA Testing"}
+                                >
+                                  {isUpdatingStatus === ticket.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <ArrowRight className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+
+                              {activeTab === "testing" && ticket.status === "QA_TESTING" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-orange-500 hover:text-orange-400 hover:bg-orange-500/10"
+                                  onClick={() => handleStatusUpdate(ticket.id, "PD_TESTING")}
+                                  disabled={isUpdatingStatus === ticket.id}
+                                  title="Move to PD Testing"
+                                >
+                                  {isUpdatingStatus === ticket.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <ArrowRight className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+
+                              {activeTab === "testing" && ticket.status === "PD_TESTING" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-indigo-500 hover:text-indigo-400 hover:bg-indigo-500/10"
+                                  onClick={() => handleStatusUpdate(ticket.id, "FOR_DEPLOYMENT")}
+                                  disabled={isUpdatingStatus === ticket.id}
+                                  title="Approve for Deployment"
+                                >
+                                  {isUpdatingStatus === ticket.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+
+                              {activeTab === "deployment" && ticket.status === "FOR_DEPLOYMENT" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-green-500 hover:text-green-400 hover:bg-green-500/10"
+                                  onClick={() => handleStatusUpdate(ticket.id, "DEPLOYED")}
+                                  disabled={isUpdatingStatus === ticket.id}
+                                  title="Mark as Deployed"
+                                >
+                                  {isUpdatingStatus === ticket.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Rocket className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
